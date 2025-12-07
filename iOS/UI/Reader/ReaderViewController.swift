@@ -298,9 +298,6 @@ class ReaderViewController: BaseObservingViewController {
             switch String(describing: type(of: recognizer)) {
                 case "_UIParallaxTransitionPanGestureRecognizer": // swipe edge gesture
                     recognizer.isEnabled = isWebtoonReader
-                    if isWebtoonReader, let webtoonReader = reader as? ReaderWebtoonViewController {
-                        webtoonReader.scrollView.panGestureRecognizer.require(toFail: recognizer)
-                    }
 
                 case "_UIContentSwipeDismissGestureRecognizer": // swipe down gesture
                     recognizer.isEnabled = !isWebtoonReader
