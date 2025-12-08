@@ -661,6 +661,21 @@ extension MangaView.ViewModel {
 
     private func getNextChapter() -> ChapterResult {
         guard !chapters.isEmpty else { return .none }
+
+        // get most recently accessed chapter (even if completed)
+        if let lastAccessed = chapters
+            .compactMap({ chapter -> (AidokuRunner.Chapter, Int)? in
+                guard let history = readingHistory[chapter.id], history.date > 0 else { return nil }
+                return (chapter, history.date)
+            })
+            .max(by: { $0.1 < $1.1 })?
+            .0
+        {
+            if !lastAccessed.locked || downloadStatus[lastAccessed.key] == .finished {
+                return .chapter(lastAccessed)
+            }
+        }
+
         // get first chapter not completed
         let chapter = (chapterSortAscending ? chapters : chapters.reversed()).first(
             where: { (!$0.locked || downloadStatus[$0.key] == .finished) && readingHistory[$0.id]?.page ?? 0 != -1 }
