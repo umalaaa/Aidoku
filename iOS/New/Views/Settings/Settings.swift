@@ -509,6 +509,37 @@ extension Settings {
                     )
                 ]
             ))
+        ),
+        .init(
+            title: NSLocalizedString("AI_TRANSLATE"),
+            value: .group(.init(items: [
+                .init(
+                    key: "Reader.geminiApiKey",
+                    title: NSLocalizedString("GEMINI_API_KEY"),
+                    value: .text(.init(
+                        placeholder: "API Key",
+                        autocapitalizationType: 0,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "Reader.geminiModel",
+                    title: NSLocalizedString("GEMINI_MODEL"),
+                    value: .text(.init(
+                        placeholder: "gemini-1.5-pro",
+                        autocapitalizationType: 0,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "Reader.targetLanguage",
+                    title: NSLocalizedString("TARGET_LANGUAGE"),
+                    value: .select(.init(
+                        values: ["Chinese (Simplified)", "English", "Japanese", "Korean", "Spanish", "French"],
+                        titles: ["Chinese (Simplified)", "English", "Japanese", "Korean", "Spanish", "French"]
+                    ))
+                )
+            ]))
         )
     ]
 

@@ -249,6 +249,15 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
         }
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil, actionProvider: { [weak self] _ in
             guard let self else { return nil }
+            let translateAction = UIAction(
+                title: NSLocalizedString("TRANSLATE"),
+                image: UIImage(systemName: "globe")
+            ) { _ in
+                Task { @MainActor in
+                    await self.translatePage(node: node)
+                }
+            }
+
             let saveToPhotosAction = UIAction(
                 title: NSLocalizedString("SAVE_TO_PHOTOS", comment: ""),
                 image: UIImage(systemName: "photo")
@@ -277,8 +286,39 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
                 }
             }
 
-            return UIMenu(title: "", children: [saveToPhotosAction, shareAction, reloadAction])
+            return UIMenu(title: "", children: [translateAction, saveToPhotosAction, shareAction, reloadAction])
         })
+    }
+
+    /// Translates the page image for the given webtoon page node
+    @MainActor
+    private func translatePage(node: ReaderWebtoonPageNode) async {
+        guard let image = node.image else { return }
+
+        let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
+        if apiKey.isEmpty {
+            let alert = UIAlertController(title: NSLocalizedString("CONFIGURE_GEMINI"), message: NSLocalizedString("CONFIGURE_GEMINI_TEXT"), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+            present(alert, animated: true)
+            return
+        }
+
+        let targetLang = UserDefaults.standard.string(forKey: "Reader.targetLanguage") ?? "Chinese (Simplified)"
+        let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
+        let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
+
+        node.setTranslating(true)
+        defer { node.setTranslating(false) }
+
+        do {
+            let translatedImage = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel)
+            node.image = translatedImage
+            node.displayPage()
+        } catch {
+            let alert = UIAlertController(title: NSLocalizedString("TRANSLATION_FAILED"), message: NSLocalizedString("TRANSLATION_FAILED_TEXT"), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+            present(alert, animated: true)
+        }
     }
 
     /// Reloads the page image for the given webtoon page node

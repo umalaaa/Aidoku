@@ -692,3 +692,15 @@
 "OPEN_CHAPTER_LIST" = "Open chapter list";
 "TOGGLE_BARS" = "Toggle bar visibility";
 "CLOSE_READER" = "Close reader";
+
+// AI Translation
+"AI_TRANSLATE" = "AI Translation";
+"GEMINI_API_KEY" = "Gemini API Key";
+"TARGET_LANGUAGE" = "Target Language";
+"GEMINI_MODEL" = "Gemini Model";
+"TRANSLATE" = "Translate";
+"TRANSLATING" = "Translating...";
+"TRANSLATION_FAILED" = "Translation Failed";
+"TRANSLATION_FAILED_TEXT" = "Failed to translate the image. Check your API Key and network.";
+"CONFIGURE_GEMINI" = "Configure Gemini";
+"CONFIGURE_GEMINI_TEXT" = "Please set your Gemini API Key in Settings > Reader > AI Translation.";

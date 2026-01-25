@@ -28,6 +28,7 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
     var text: String?
     var ratio: CGFloat?
     private var loading = false
+    private var translating = false
     private var shouldShowLiveTextButton = false
     private var liveTextAnalysisTask: Task<Void, Never>?
 
@@ -57,6 +58,13 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
 
     lazy var progressNode = ASCellNode(viewBlock: {
         CircularProgressView()
+    })
+
+    lazy var activityIndicatorNode = ASCellNode(viewBlock: {
+        let view = UIActivityIndicatorView(style: .large)
+        view.color = .white
+        view.startAnimating()
+        return view
     })
 
     init(
@@ -169,6 +177,7 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
     }
 
     override func layoutSpecThatFits(_ constrainedSize: ASSizeRange) -> ASLayoutSpec {
+        let contentSpec: ASLayoutSpec
         if let image {
             if pillarbox && isPillarboxOrientation() {
                 let percent = (100 - pillarboxAmount) / 100
@@ -178,14 +187,14 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
                 imageNode.style.height = ASDimensionMakeWithPoints(height)
                 imageNode.style.alignSelf = .center
 
-                return ASCenterLayoutSpec(
+                contentSpec = ASCenterLayoutSpec(
                     horizontalPosition: .center,
                     verticalPosition: .center,
                     sizingOption: [],
                     child: imageNode
                 )
             } else {
-                return ASRatioLayoutSpec(ratio: image.size.height / image.size.width, child: imageNode)
+                contentSpec = ASRatioLayoutSpec(ratio: image.size.height / image.size.width, child: imageNode)
             }
         } else if text != nil {
             // todo: the text node should probably adjust its size based on the text
@@ -193,12 +202,12 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
                 let percent = (100 - pillarboxAmount) / 100
                 let ratio = percent * (ratio ?? Self.defaultRatio)
 
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio,
                     child: textNode
                 )
             } else {
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio ?? Self.defaultRatio,
                     child: textNode
                 )
@@ -208,17 +217,22 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
                 let percent = (100 - pillarboxAmount) / 100
                 let ratio = percent * (ratio ?? Self.defaultRatio)
 
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio,
                     child: progressNode
                 )
             } else {
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio ?? Self.defaultRatio,
                     child: progressNode
                 )
             }
         }
+
+        if translating {
+            return ASOverlayLayoutSpec(child: contentSpec, overlay: ASCenterLayoutSpec(centeringOptions: .XY, sizingOptions: [], child: activityIndicatorNode))
+        }
+        return contentSpec
     }
 }
 
@@ -575,6 +589,11 @@ extension ReaderWebtoonPageNode {
             guard imageNode.imageAnalaysisInteraction?.selectableItemsHighlighted == false else { return }
             imageNode.imageAnalaysisInteraction?.isSupplementaryInterfaceHidden = hidden
         }
+    }
+
+    func setTranslating(_ translating: Bool) {
+        self.translating = translating
+        setNeedsLayout()
     }
 }
 
