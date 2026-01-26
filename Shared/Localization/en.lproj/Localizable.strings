@@ -704,3 +704,4 @@
 "TRANSLATION_FAILED_TEXT" = "Failed to translate the image. Check your API Key and network.";
 "CONFIGURE_GEMINI" = "Configure Gemini";
 "CONFIGURE_GEMINI_TEXT" = "Please set your Gemini API Key in Settings > Reader > AI Translation.";
+"GEMINI_API_ENDPOINT" = "API Endpoint (Optional)";

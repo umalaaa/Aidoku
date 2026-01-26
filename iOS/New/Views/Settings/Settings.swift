@@ -523,6 +523,16 @@ extension Settings {
                     ))
                 ),
                 .init(
+                    key: "Reader.geminiApiEndpoint",
+                    title: NSLocalizedString("GEMINI_API_ENDPOINT"),
+                    value: .text(.init(
+                        placeholder: "https://generativelanguage.googleapis.com",
+                        autocapitalizationType: 0,
+                        keyboardType: 3,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
                     key: "Reader.geminiModel",
                     title: NSLocalizedString("GEMINI_MODEL"),
                     value: .text(.init(

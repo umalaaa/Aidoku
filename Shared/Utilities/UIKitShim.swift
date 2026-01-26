@@ -109,7 +109,7 @@ class ImageTranslator {
         9.0 / 21.0  // 9:21
     ]
 
-    func translate(image: PlatformImage, apiKey: String, targetLang: String, model: String = "gemini-1.5-pro") async throws -> PlatformImage {
+    func translate(image: PlatformImage, apiKey: String, targetLang: String, model: String = "gemini-1.5-pro", apiEndpoint: String? = nil) async throws -> PlatformImage {
         guard let cgImage = image.cgImage else {
             throw TranslationError.invalidImage
         }
@@ -122,14 +122,14 @@ class ImageTranslator {
         // Gemini has a ~4096px limit per side usually, or total pixel limit.
         // Splitting very tall images is safer.
         if ratio < 0.6 || ratio > 1.8 || width > 4000 || height > 4000 {
-            return try await splitAndTranslate(image: image, apiKey: apiKey, targetLang: targetLang, model: model)
+            return try await splitAndTranslate(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
         }
 
         // Single image translation (with padding if needed)
-        return try await processSingleImage(image: image, apiKey: apiKey, targetLang: targetLang, model: model)
+        return try await processSingleImage(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
     }
 
-    private func splitAndTranslate(image: PlatformImage, apiKey: String, targetLang: String, model: String) async throws -> PlatformImage {
+    private func splitAndTranslate(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {
         guard let cgImage = image.cgImage else { throw TranslationError.invalidImage }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
@@ -165,14 +165,14 @@ class ImageTranslator {
         for (index, rect) in parts.enumerated() {
             guard let partCG = cgImage.cropping(to: rect) else { continue }
             let partImage = PlatformImage(cgImage: partCG)
-            let translatedPart = try await processSingleImage(image: partImage, apiKey: apiKey, targetLang: targetLang, model: model)
+            let translatedPart = try await processSingleImage(image: partImage, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
             translatedImages.append((index, translatedPart))
         }
 
         return stitchImages(originalSize: CGSize(width: width, height: height), parts: parts, images: translatedImages.map { $0.1 })
     }
 
-    private func processSingleImage(image: PlatformImage, apiKey: String, targetLang: String, model: String) async throws -> PlatformImage {
+    private func processSingleImage(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {
         guard let cgImage = image.cgImage else { throw TranslationError.invalidImage }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
@@ -196,7 +196,7 @@ class ImageTranslator {
         }
 
         // Call API
-        let resultImage = try await callGemini(image: imageToTranslate, apiKey: apiKey, targetLang: targetLang, model: model)
+        let resultImage = try await callGemini(image: imageToTranslate, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
 
         // Crop if padded
         if let info = paddingInfo {
@@ -278,11 +278,14 @@ class ImageTranslator {
          return PlatformImage(cgImage: cropped)
     }
 
-    private func callGemini(image: PlatformImage, apiKey: String, targetLang: String, model: String) async throws -> PlatformImage {
+    private func callGemini(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {
         guard let data = image.pngData() else { throw TranslationError.encodingFailed }
         let base64 = data.base64EncodedString()
 
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent?key=\(apiKey)")!
+        let baseUrl = apiEndpoint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? apiEndpoint! : "https://generativelanguage.googleapis.com"
+        let urlString = "\(baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/v1beta/models/\(model):generateContent?key=\(apiKey)"
+
+        guard let url = URL(string: urlString) else { throw TranslationError.apiError }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

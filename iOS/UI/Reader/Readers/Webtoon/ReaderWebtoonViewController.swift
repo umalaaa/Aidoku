@@ -306,12 +306,13 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
         let targetLang = UserDefaults.standard.string(forKey: "Reader.targetLanguage") ?? "Chinese (Simplified)"
         let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
         let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
+        let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
 
         node.setTranslating(true)
         defer { node.setTranslating(false) }
 
         do {
-            let translatedImage = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel)
+            let translatedImage = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint)
             node.image = translatedImage
             node.displayPage()
         } catch {
