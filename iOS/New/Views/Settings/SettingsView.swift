@@ -347,7 +347,17 @@ extension SettingsView {
     func customContentHandler(_ setting: Setting) -> some View {
         if setting.key == "Reader.geminiModel" {
             let modelBinding: Binding<String> = SettingsStore.shared.binding(key: "Reader.geminiModel")
-            let models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro-vision"]
+            let models = [
+                "gemini-3-pro-image-preview",
+                "gemini-3-pro-preview",
+                "gemini-3-flash-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
+                "gemini-1.5-pro",
+                "gemini-1.5-flash"
+            ]
 
             HStack {
                 Text(setting.title)
