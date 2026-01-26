@@ -134,13 +134,34 @@ class ReaderViewController: BaseObservingViewController {
                 action: #selector(openChapterList)
             )
         ]
-        let moreButton = UIBarButtonItem(
-            image: UIImage(systemName: "safari"),
-            style: .plain,
-            target: self,
-            action: #selector(openWebView)
-        )
-        moreButton.isEnabled = chapter.url != nil
+        let moreButton: UIBarButtonItem
+        if #available(iOS 14.0, *) {
+            moreButton = UIBarButtonItem(
+                image: UIImage(systemName: "ellipsis.circle"),
+                menu: UIMenu(children: [
+                    UIAction(
+                        title: NSLocalizedString("OPEN_WEBSITE"),
+                        image: UIImage(systemName: "safari"),
+                        attributes: chapter.url == nil ? .disabled : [],
+                        handler: { [weak self] _ in self?.openWebView() }
+                    ),
+                    UIAction(
+                        title: NSLocalizedString("TRANSLATE"),
+                        image: UIImage(systemName: "globe"),
+                        handler: { [weak self] _ in self?.reader?.translateVisiblePages?() }
+                    )
+                ])
+            )
+        } else {
+            moreButton = UIBarButtonItem(
+                image: UIImage(systemName: "safari"),
+                style: .plain,
+                target: self,
+                action: #selector(openWebView)
+            )
+            moreButton.isEnabled = chapter.url != nil
+        }
+
         navigationItem.rightBarButtonItems = [
             moreButton,
             UIBarButtonItem(

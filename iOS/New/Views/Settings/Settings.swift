@@ -509,7 +509,10 @@ extension Settings {
                     )
                 ]
             ))
-        ),
+        )
+    ]
+
+    private static let advancedSettings: [Setting] = [
         .init(
             title: NSLocalizedString("AI_TRANSLATE"),
             value: .group(.init(items: [
@@ -550,10 +553,7 @@ extension Settings {
                     ))
                 )
             ]))
-        )
-    ]
-
-    private static let advancedSettings: [Setting] = [
+        ),
         .init(
             title: NSLocalizedString("LOGGING"),
             value: .group(.init(items: [
