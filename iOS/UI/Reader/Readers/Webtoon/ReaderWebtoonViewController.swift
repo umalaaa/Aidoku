@@ -634,11 +634,11 @@ extension ReaderWebtoonViewController: ReaderReaderDelegate {
 
     func translateVisiblePages() {
         // Find visible image pages and trigger translation
-        collectionNode.visibleNodes.forEach { node in
-            if let pageNode = node as? ReaderWebtoonPageNode {
-                Task { @MainActor in
-                    await self.translatePage(node: pageNode)
-                }
+        let visibleNodes = collectionNode.visibleNodes.compactMap { $0 as? ReaderWebtoonPageNode }
+
+        Task { @MainActor in
+            for pageNode in visibleNodes {
+                await self.translatePage(node: pageNode)
             }
         }
     }

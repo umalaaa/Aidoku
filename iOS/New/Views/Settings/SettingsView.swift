@@ -609,7 +609,7 @@ struct TranslatedImagesView: View {
         List {
             ForEach(images, id: \.self) { url in
                 HStack {
-                    if let image = UIImage(contentsOfFile: url.path) {
+                    if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
                         Image(uiImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fit)

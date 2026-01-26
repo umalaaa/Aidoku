@@ -157,7 +157,7 @@ class ImageTranslator {
         }
         let fileURL = cacheDir.appendingPathComponent(key).appendingPathExtension("png")
         if let data = image.pngData() {
-            try? data.write(to: fileURL)
+            try? data.write(to: fileURL, options: .atomic)
         }
     }
 
