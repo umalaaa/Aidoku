@@ -333,12 +333,15 @@ class ImageTranslator {
         5. Return ONLY the image.
         """
 
-        let requestBody = GeminiRequest(contents: [
-            .init(parts: [
-                .init(text: prompt),
-                .init(inlineData: .init(mimeType: "image/png", data: base64))
-            ])
-        ])
+        let requestBody = GeminiRequest(
+            contents: [
+                .init(parts: [
+                    .init(text: prompt),
+                    .init(inlineData: .init(mimeType: "image/png", data: base64))
+                ])
+            ],
+            generationConfig: .init(responseModalities: ["IMAGE"])
+        )
 
         request.httpBody = try JSONEncoder().encode(requestBody)
 
@@ -399,6 +402,7 @@ class ImageTranslator {
 // Codable Structs
 struct GeminiRequest: Codable {
     let contents: [Content]
+    let generationConfig: GenerationConfig?
 
     struct Content: Codable {
         let parts: [Part]
@@ -417,6 +421,10 @@ struct GeminiRequest: Codable {
     struct InlineData: Codable {
         let mimeType: String
         let data: String
+    }
+
+    struct GenerationConfig: Codable {
+        let responseModalities: [String]
     }
 }
 
