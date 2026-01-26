@@ -39,6 +39,8 @@ class ReaderWebtoonViewController: ZoomableCollectionViewController {
     // Indicates if an info refresh should be done if info pages are off screen
     private var needsInfoRefresh = false
 
+    var autoTranslate: Bool = false
+
     // Stores the last calculated page number
     private var previousPage = 0
 
@@ -171,6 +173,10 @@ extension ReaderWebtoonViewController {
 
         isScrolling = true
 
+        if autoTranslate {
+            translateVisiblePages()
+        }
+
         // ignore if page slider is being used
         guard !isSliding && !isZooming else { return }
 
@@ -294,12 +300,18 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
     @MainActor
     private func translatePage(node: ReaderWebtoonPageNode) async {
         guard let image = node.image else { return }
+        if node.isTranslated || node.translating { return }
 
         let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
         if apiKey.isEmpty {
-            let alert = UIAlertController(title: NSLocalizedString("CONFIGURE_GEMINI"), message: NSLocalizedString("CONFIGURE_GEMINI_TEXT"), preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
-            present(alert, animated: true)
+            // Only show alert if explicitly triggered by user context menu, not auto-translate
+            // To distinguish, we might need a flag or just suppress alert for auto-translate
+            // For now, if autoTranslate is on, we might skip alert to avoid spam, or check earlier.
+            if !autoTranslate {
+                let alert = UIAlertController(title: NSLocalizedString("CONFIGURE_GEMINI"), message: NSLocalizedString("CONFIGURE_GEMINI_TEXT"), preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+                present(alert, animated: true)
+            }
             return
         }
 
@@ -326,11 +338,14 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
         do {
             let translatedImage = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint, cacheKey: cacheKey)
             node.image = translatedImage
+            node.isTranslated = true
             node.displayPage()
         } catch {
-            let alert = UIAlertController(title: NSLocalizedString("TRANSLATION_FAILED"), message: NSLocalizedString("TRANSLATION_FAILED_TEXT"), preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
-            present(alert, animated: true)
+            if !autoTranslate {
+                let alert = UIAlertController(title: NSLocalizedString("TRANSLATION_FAILED"), message: NSLocalizedString("TRANSLATION_FAILED_TEXT"), preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+                present(alert, animated: true)
+            }
         }
     }
 

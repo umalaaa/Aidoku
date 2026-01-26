@@ -44,13 +44,15 @@ struct SwiftUIReaderNavigationController: View {
     let source: AidokuRunner.Source?
     let manga: AidokuRunner.Manga
     let chapter: AidokuRunner.Chapter
+    let autoTranslate: Bool
 
     @State private var interfaceOrientations: UIInterfaceOrientationMask?
 
-    init(source: AidokuRunner.Source?, manga: AidokuRunner.Manga, chapter: AidokuRunner.Chapter) {
+    init(source: AidokuRunner.Source?, manga: AidokuRunner.Manga, chapter: AidokuRunner.Chapter, autoTranslate: Bool = false) {
         self.source = source
         self.manga = manga
         self.chapter = chapter
+        self.autoTranslate = autoTranslate
 
         let interfaceOrientations: UIInterfaceOrientationMask
         switch UserDefaults.standard.string(forKey: "Reader.orientation") {
@@ -63,7 +65,7 @@ struct SwiftUIReaderNavigationController: View {
     }
 
     var body: some View {
-        _SwiftUIReaderNavigationController(source: source, manga: manga, chapter: chapter)
+        _SwiftUIReaderNavigationController(source: source, manga: manga, chapter: chapter, autoTranslate: autoTranslate)
             .interfaceOrientations(interfaceOrientations)
             .onReceive(NotificationCenter.default.publisher(for: .readerOrientation)) { _ in
                 switch UserDefaults.standard.string(forKey: "Reader.orientation") {
@@ -80,6 +82,7 @@ private struct _SwiftUIReaderNavigationController: UIViewControllerRepresentable
     let source: AidokuRunner.Source?
     let manga: AidokuRunner.Manga
     let chapter: AidokuRunner.Chapter
+    let autoTranslate: Bool
 
     final class Coordinator {
         var nav: ReaderNavigationController?
@@ -94,7 +97,8 @@ private struct _SwiftUIReaderNavigationController: UIViewControllerRepresentable
         let reader = ReaderViewController(
             source: source,
             manga: manga,
-            chapter: chapter
+            chapter: chapter,
+            autoTranslate: autoTranslate
         )
         let nav = ReaderNavigationController(readerViewController: reader)
         context.coordinator.reader = reader
@@ -110,7 +114,8 @@ private struct _SwiftUIReaderNavigationController: UIViewControllerRepresentable
             let newReader = ReaderViewController(
                 source: source,
                 manga: manga,
-                chapter: chapter
+                chapter: chapter,
+                autoTranslate: autoTranslate
             )
             context.coordinator.reader = newReader
             uiViewController.setViewControllers([newReader], animated: false)

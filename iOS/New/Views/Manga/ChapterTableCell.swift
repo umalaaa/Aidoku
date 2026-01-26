@@ -17,6 +17,7 @@ struct ChapterTableCell: View {
     let downloadStatus: DownloadStatus
     var downloadProgress: Float?
     let displayMode: ChapterTitleDisplayMode
+    var onTranslate: (() -> Void)? = nil
 
     var downloaded: Bool {
         downloadStatus == .finished
@@ -65,6 +66,16 @@ struct ChapterTableCell: View {
             } else if locked {
                 Image(systemName: "lock.fill")
                     .imageScale(.small)
+            }
+
+            if let onTranslate {
+                Button(action: onTranslate) {
+                    Image(systemName: "globe")
+                        .imageScale(.small)
+                        .foregroundStyle(.blue)
+                }
+                .padding(.leading, 8)
+                .buttonStyle(BorderlessButtonStyle())
             }
         }
         .foregroundStyle(.primary)

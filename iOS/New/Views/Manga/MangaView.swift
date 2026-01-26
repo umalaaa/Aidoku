@@ -28,6 +28,7 @@ struct MangaView: View {
     @State private var loadingAlert: UIAlertController?
 
     @State private var openChapter: AidokuRunner.Chapter?
+    @State private var autoTranslateOpenChapter = false
 
     private var path: NavigationCoordinator
 
@@ -206,10 +207,14 @@ struct MangaView: View {
                         }
                         return mangaWithFilteredChapters
                     }(),
-                    chapter: chapter
+                    chapter: chapter,
+                    autoTranslate: autoTranslateOpenChapter
                 )
                 .ignoresSafeArea()
                 .navigationTransitionZoom(sourceID: chapter, in: transitionNamespace)
+                .onDisappear {
+                    autoTranslateOpenChapter = false
+                }
             }
             .environment(\.editMode, $editMode)
         }
@@ -309,7 +314,11 @@ extension MangaView {
             downloadStatus: downloadStatus,
             downloadProgress: viewModel.downloadProgress[chapter.key],
             displayMode: viewModel.chapterTitleDisplayMode,
-            isEditing: editMode == .active
+            isEditing: editMode == .active,
+            onTranslate: {
+                autoTranslateOpenChapter = true
+                openChapter = chapter
+            }
         ) {
             if editMode == .inactive {
                 openChapter = chapter
@@ -731,6 +740,7 @@ private struct ChapterCellView<T: View>: View, Equatable {
     let downloadProgress: Float?
     let displayMode: ChapterTitleDisplayMode
     let isEditing: Bool
+    var onTranslate: (() -> Void)?
 
     var onPressed: (() -> Void)?
     var contextMenu: (() -> T)?
@@ -749,7 +759,8 @@ private struct ChapterCellView<T: View>: View, Equatable {
                 page: page,
                 downloadStatus: downloadStatus,
                 downloadProgress: downloadProgress,
-                displayMode: displayMode
+                displayMode: displayMode,
+                onTranslate: isEditing ? nil : onTranslate
             )
         }
         if isEditing {

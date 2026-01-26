@@ -28,7 +28,8 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
     var text: String?
     var ratio: CGFloat?
     private var loading = false
-    private var translating = false
+    private(set) var translating = false
+    var isTranslated = false
     private var shouldShowLiveTextButton = false
     private var liveTextAnalysisTask: Task<Void, Never>?
 
