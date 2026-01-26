@@ -551,6 +551,11 @@ extension Settings {
                         values: ["Chinese (Simplified)", "English", "Japanese", "Korean", "Spanish", "French"],
                         titles: ["Chinese (Simplified)", "English", "Japanese", "Korean", "Spanish", "French"]
                     ))
+                ),
+                .init(
+                    key: "Reader.geminiTest",
+                    title: NSLocalizedString("TEST_GEMINI_CONFIG"),
+                    value: .button(.init())
                 )
             ]))
         ),

@@ -273,6 +273,43 @@ extension SettingsView {
                         await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
                     }
                 }
+            case "Reader.geminiTest":
+                let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
+                if apiKey.isEmpty {
+                    confirmAction(
+                        title: NSLocalizedString("CONFIGURE_GEMINI"),
+                        message: NSLocalizedString("CONFIGURE_GEMINI_TEXT"),
+                        continueActionName: NSLocalizedString("OK"),
+                        destructive: false
+                    ) {}
+                    return
+                }
+
+                (UIApplication.shared.delegate as? AppDelegate)?.showLoadingIndicator()
+                Task {
+                    let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
+                    let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
+                    let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
+
+                    do {
+                        try await ImageTranslator.shared.testConnection(apiKey: apiKey, model: finalModel, apiEndpoint: apiEndpoint)
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
+                        confirmAction(
+                            title: NSLocalizedString("GEMINI_CONFIG_SUCCESS"),
+                            message: NSLocalizedString("GEMINI_CONFIG_SUCCESS_TEXT"),
+                            continueActionName: NSLocalizedString("OK"),
+                            destructive: false
+                        ) {}
+                    } catch {
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
+                        confirmAction(
+                            title: NSLocalizedString("GEMINI_CONFIG_FAILED"),
+                            message: String(format: NSLocalizedString("GEMINI_CONFIG_FAILED_TEXT"), error.localizedDescription),
+                            continueActionName: NSLocalizedString("OK"),
+                            destructive: false
+                        ) {}
+                    }
+                }
             default:
                 break
         }

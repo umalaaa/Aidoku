@@ -705,3 +705,8 @@
 "CONFIGURE_GEMINI" = "Configure Gemini";
 "CONFIGURE_GEMINI_TEXT" = "Please set your Gemini API Key in Settings > Reader > AI Translation.";
 "GEMINI_API_ENDPOINT" = "API Endpoint (Optional)";
+"TEST_GEMINI_CONFIG" = "Test Configuration";
+"GEMINI_CONFIG_SUCCESS" = "Configuration Verified";
+"GEMINI_CONFIG_SUCCESS_TEXT" = "Successfully connected to Gemini API.";
+"GEMINI_CONFIG_FAILED" = "Configuration Failed";
+"GEMINI_CONFIG_FAILED_TEXT" = "Failed to connect: %@";

@@ -331,6 +331,33 @@ class ImageTranslator {
         return responseImage
     }
 
+    func testConnection(apiKey: String, model: String, apiEndpoint: String?) async throws {
+        let baseUrl = apiEndpoint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? apiEndpoint! : "https://generativelanguage.googleapis.com"
+        let urlString = "\(baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/v1beta/models/\(model):generateContent?key=\(apiKey)"
+
+        guard let url = URL(string: urlString) else { throw TranslationError.apiError }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let requestBody = GeminiRequest(contents: [
+            .init(parts: [
+                .init(text: "Hello")
+            ])
+        ])
+
+        request.httpBody = try JSONEncoder().encode(requestBody)
+
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+             if let errorText = String(data: responseData, encoding: .utf8) {
+                 print("Gemini Test Error: \(errorText)")
+             }
+             throw TranslationError.apiError
+        }
+    }
+
     enum TranslationError: Error {
         case invalidImage
         case encodingFailed
