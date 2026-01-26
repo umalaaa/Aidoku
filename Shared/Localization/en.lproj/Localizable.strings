@@ -710,3 +710,6 @@
 "GEMINI_CONFIG_SUCCESS_TEXT" = "Successfully connected to Gemini API.";
 "GEMINI_CONFIG_FAILED" = "Configuration Failed";
 "GEMINI_CONFIG_FAILED_TEXT" = "Failed to connect: %@";
+"SAVE_CONFIGURATION" = "Save Configuration";
+"SETTINGS_SAVED" = "Settings Saved";
+"SETTINGS_SAVED_TEXT" = "Your AI translation settings have been saved.";

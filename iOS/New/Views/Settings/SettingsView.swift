@@ -310,6 +310,13 @@ extension SettingsView {
                         ) {}
                     }
                 }
+            case "Reader.geminiSave":
+                confirmAction(
+                    title: NSLocalizedString("SETTINGS_SAVED"),
+                    message: NSLocalizedString("SETTINGS_SAVED_TEXT"),
+                    continueActionName: NSLocalizedString("OK"),
+                    destructive: false
+                ) {}
             default:
                 break
         }

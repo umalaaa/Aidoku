@@ -556,6 +556,11 @@ extension Settings {
                     key: "Reader.geminiTest",
                     title: NSLocalizedString("TEST_GEMINI_CONFIG"),
                     value: .button(.init())
+                ),
+                .init(
+                    key: "Reader.geminiSave",
+                    title: NSLocalizedString("SAVE_CONFIGURATION"),
+                    value: .button(.init())
                 )
             ]))
         ),
