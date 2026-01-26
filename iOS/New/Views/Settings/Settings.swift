@@ -538,11 +538,7 @@ extension Settings {
                 .init(
                     key: "Reader.geminiModel",
                     title: NSLocalizedString("GEMINI_MODEL"),
-                    value: .text(.init(
-                        placeholder: "gemini-1.5-pro",
-                        autocapitalizationType: 0,
-                        autocorrectionDisabled: true
-                    ))
+                    value: .custom
                 ),
                 .init(
                     key: "Reader.targetLanguage",

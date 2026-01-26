@@ -287,12 +287,10 @@ extension SettingsView {
 
                 (UIApplication.shared.delegate as? AppDelegate)?.showLoadingIndicator()
                 Task {
-                    let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
-                    let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
                     let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
 
                     do {
-                        try await ImageTranslator.shared.testConnection(apiKey: apiKey, model: finalModel, apiEndpoint: apiEndpoint)
+                        try await ImageTranslator.shared.validateConfiguration(apiKey: apiKey, apiEndpoint: apiEndpoint)
                         await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
                         confirmAction(
                             title: NSLocalizedString("GEMINI_CONFIG_SUCCESS"),
@@ -347,7 +345,33 @@ extension SettingsView {
 
     @ViewBuilder
     func customContentHandler(_ setting: Setting) -> some View {
-        if setting.key == "Library.defaultCategory" {
+        if setting.key == "Reader.geminiModel" {
+            let modelBinding: Binding<String> = SettingsStore.shared.binding(key: "Reader.geminiModel")
+            let models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro-vision"]
+
+            HStack {
+                Text(setting.title)
+                    .lineLimit(1)
+                Spacer()
+
+                TextField("gemini-1.5-pro", text: modelBinding)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled(true)
+                    .textInputAutocapitalization(.never)
+                    .foregroundColor(.secondary)
+
+                Menu {
+                    ForEach(models, id: \.self) { model in
+                        Button(model) {
+                            modelBinding.wrappedValue = model
+                        }
+                    }
+                } label: {
+                    Image(systemName: "chevron.up.chevron.down")
+                        .foregroundColor(.secondary)
+                }
+            }
+        } else if setting.key == "Library.defaultCategory" {
             let newSetting = {
                 var setting = setting
                 setting.value = .select(.init(
