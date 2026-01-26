@@ -109,7 +109,12 @@ class ImageTranslator {
         9.0 / 21.0  // 9:21
     ]
 
-    func translate(image: PlatformImage, apiKey: String, targetLang: String, model: String = "gemini-1.5-pro", apiEndpoint: String? = nil) async throws -> PlatformImage {
+    func translate(image: PlatformImage, apiKey: String, targetLang: String, model: String = "gemini-1.5-pro", apiEndpoint: String? = nil, cacheKey: String? = nil) async throws -> PlatformImage {
+        // Check cache first
+        if let cacheKey, let cached = checkCache(key: cacheKey) {
+            return cached
+        }
+
         guard let cgImage = image.cgImage else {
             throw TranslationError.invalidImage
         }
@@ -118,15 +123,42 @@ class ImageTranslator {
         let height = CGFloat(cgImage.height)
         let ratio = width / height
 
+        let result: PlatformImage
         // Split if necessary (Webtoon strip logic or too large)
         // Gemini has a ~4096px limit per side usually, or total pixel limit.
         // Splitting very tall images is safer.
         if ratio < 0.6 || ratio > 1.8 || width > 4000 || height > 4000 {
-            return try await splitAndTranslate(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
+            result = try await splitAndTranslate(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
+        } else {
+            // Single image translation (with padding if needed)
+            result = try await processSingleImage(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
         }
 
-        // Single image translation (with padding if needed)
-        return try await processSingleImage(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
+        // Save to cache
+        if let cacheKey {
+            saveToCache(image: result, key: cacheKey)
+        }
+        return result
+    }
+
+    private func checkCache(key: String) -> PlatformImage? {
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
+        let fileURL = cacheDir.appendingPathComponent(key).appendingPathExtension("png")
+        if let data = try? Data(contentsOf: fileURL) {
+            return PlatformImage(data: data)
+        }
+        return nil
+    }
+
+    private func saveToCache(image: PlatformImage, key: String) {
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
+        if !FileManager.default.fileExists(atPath: cacheDir.path) {
+            try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        }
+        let fileURL = cacheDir.appendingPathComponent(key).appendingPathExtension("png")
+        if let data = image.pngData() {
+            try? data.write(to: fileURL)
+        }
     }
 
     private func splitAndTranslate(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {

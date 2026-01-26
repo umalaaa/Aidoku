@@ -308,11 +308,23 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
         let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
         let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
 
+        // Generate cache key
+        var cacheKey: String?
+        if let chapterId = node.page.chapterId as String? {
+            let keyString = "\(chapterId)-\(node.page.index)-\(targetLang)-\(finalModel)"
+            if let data = keyString.data(using: .utf8) {
+                // SHA256 not directly available easily without import CommonCrypto, use simple hashing for now or just the string if filesystem allows
+                // Filenames can be long, so hashing is better.
+                // Assuming simple string is fine for now, sanitized.
+                cacheKey = keyString.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
+            }
+        }
+
         node.setTranslating(true)
         defer { node.setTranslating(false) }
 
         do {
-            let translatedImage = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint)
+            let translatedImage = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint, cacheKey: cacheKey)
             node.image = translatedImage
             node.displayPage()
         } catch {
