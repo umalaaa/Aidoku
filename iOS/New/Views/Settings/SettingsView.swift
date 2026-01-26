@@ -315,6 +315,11 @@ extension SettingsView {
                     continueActionName: NSLocalizedString("OK"),
                     destructive: false
                 ) {}
+            case "Reader.manageTranslations":
+                let controller = UIHostingController(rootView: TranslatedImagesView())
+                controller.title = NSLocalizedString("MANAGE_TRANSLATED_IMAGES")
+                controller.navigationItem.largeTitleDisplayMode = .never
+                path.push(controller)
             default:
                 break
         }

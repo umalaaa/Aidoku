@@ -713,3 +713,6 @@
 "SAVE_CONFIGURATION" = "Save Configuration";
 "SETTINGS_SAVED" = "Settings Saved";
 "SETTINGS_SAVED_TEXT" = "Your AI translation settings have been saved.";
+"MANAGE_TRANSLATED_IMAGES" = "Manage Translated Images";
+"TRANSLATED_IMAGES" = "Translated Images";
+"CLEAR_ALL" = "Clear All";

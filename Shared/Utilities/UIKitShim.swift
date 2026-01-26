@@ -161,6 +161,21 @@ class ImageTranslator {
         }
     }
 
+    func getCachedImages() -> [URL] {
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
+        guard let files = try? FileManager.default.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil) else { return [] }
+        return files.filter { $0.pathExtension == "png" }
+    }
+
+    func deleteCachedImage(url: URL) {
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    func clearCache() {
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
+        try? FileManager.default.removeItem(at: cacheDir)
+    }
+
     private func splitAndTranslate(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {
         guard let cgImage = image.cgImage else { throw TranslationError.invalidImage }
         let width = CGFloat(cgImage.width)

@@ -557,6 +557,11 @@ extension Settings {
                     key: "Reader.geminiSave",
                     title: NSLocalizedString("SAVE_CONFIGURATION"),
                     value: .button(.init())
+                ),
+                .init(
+                    key: "Reader.manageTranslations",
+                    title: NSLocalizedString("MANAGE_TRANSLATED_IMAGES"),
+                    value: .button(.init())
                 )
             ]))
         ),
