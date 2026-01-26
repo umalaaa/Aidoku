@@ -21,5 +21,9 @@ protocol ReaderReaderDelegate: UIViewController {
     func sliderStopped(value: CGFloat)
     func setChapter(_ chapter: AidokuRunner.Chapter, startPage: Int)
 
-    @objc optional func translateVisiblePages()
+    func translateVisiblePages()
+}
+
+extension ReaderReaderDelegate {
+    func translateVisiblePages() {}
 }

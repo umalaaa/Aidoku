@@ -148,7 +148,7 @@ class ReaderViewController: BaseObservingViewController {
                     UIAction(
                         title: NSLocalizedString("TRANSLATE"),
                         image: UIImage(systemName: "globe"),
-                        handler: { [weak self] _ in self?.reader?.translateVisiblePages?() }
+                        handler: { [weak self] _ in self?.reader?.translateVisiblePages() }
                     )
                 ])
             )
