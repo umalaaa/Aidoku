@@ -193,11 +193,16 @@ public class TranslationManager: ObservableObject {
 
         Task {
             do {
-                // Determine pages
-                // We rely on source.getPageList. If downloaded, Aidoku *should* provide local access or we handle it.
-                // Assuming getPageList works for downloaded chapters (returning local URIs or data)
-                let pages = try await source.getPageList(manga: manga, chapter: chapter)
-                let total = pages.count
+                // Get downloaded pages (local URLs)
+                let identifier = ChapterIdentifier(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: chapterKey)
+                let pageURLs = DownloadManager.shared.getDownloadedPages(for: identifier)
+
+                let total = pageURLs.count
+
+                if total == 0 {
+                    self.status[chapterKey] = .failed(error: "No downloaded pages found")
+                    return
+                }
 
                 let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
                 let targetLang = UserDefaults.standard.string(forKey: "Reader.targetLanguage") ?? "Chinese (Simplified)"
@@ -205,26 +210,15 @@ public class TranslationManager: ObservableObject {
                 let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
                 let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
 
-                for (index, page) in pages.enumerated() {
+                for (index, url) in pageURLs.enumerated() {
                     self.status[chapterKey] = .translating(progress: Float(index)/Float(total), current: index + 1, total: total)
 
-                    // Try to get image
+                    // Try to get image from local file
                     var image: PlatformImage?
 
-                    // 1. Try file URL (common for downloaded chapters)
-                    if case .url(let url, _) = page.content, url.isFileURL {
-                        if let data = try? Data(contentsOf: url) {
-                            image = PlatformImage(data: data)
-                        }
+                    if let data = try? Data(contentsOf: url) {
+                        image = PlatformImage(data: data)
                     }
-                    // 2. Try base64/data (not directly in PageContent, usually managed by ImageRequest/Processor)
-                    // AidokuRunner.PageContent doesn't expose base64 string directly, it's either .url, .text, .image(PlatformImage) or .zipFile
-                    else if case .image(let pageImage) = page.content {
-                        #if canImport(UIKit)
-                        image = pageImage
-                        #endif
-                    }
-                    // 3. Handle other cases if necessary
 
                     if let image = image {
                         // Generate cache key
