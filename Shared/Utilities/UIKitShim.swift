@@ -93,7 +93,7 @@ import UIKit
 import AppKit
 #endif
 
-public enum TranslationStatus: Equatable {
+public enum TranslationStatus: Equatable, Sendable {
     case idle
     case waitingForDownload
     case downloading
@@ -187,7 +187,7 @@ public class TranslationManager: ObservableObject {
     }
 
     private func startTranslationProcess(chapterKey: String) {
-        guard let (chapter, _, source) = pendingTranslations[chapterKey] else { return }
+        guard let (chapter, manga, source) = pendingTranslations[chapterKey] else { return }
 
         self.status[chapterKey] = .translating(progress: 0, current: 0, total: 0)
 
@@ -196,7 +196,7 @@ public class TranslationManager: ObservableObject {
                 // Determine pages
                 // We rely on source.getPageList. If downloaded, Aidoku *should* provide local access or we handle it.
                 // Assuming getPageList works for downloaded chapters (returning local URIs or data)
-                let pages = try await source.getPageList(chapter: chapter)
+                let pages = try await source.getPageList(manga: manga, chapter: chapter)
                 let total = pages.count
 
                 let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
