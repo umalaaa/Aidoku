@@ -212,28 +212,23 @@ public class TranslationManager: ObservableObject {
                     var image: PlatformImage?
 
                     // 1. Try file URL (common for downloaded chapters)
-                    if let urlStr = page.imageURL, let url = URL(string: urlStr), url.isFileURL {
+                    if case .url(let url, _) = page.content, url.isFileURL {
                         if let data = try? Data(contentsOf: url) {
                             image = PlatformImage(data: data)
                         }
                     }
-                    // 2. Try base64
-                    else if let base64 = page.base64, let data = Data(base64Encoded: base64) {
-                        image = PlatformImage(data: data)
+                    // 2. Try base64/data (not directly in PageContent, usually managed by ImageRequest/Processor)
+                    // AidokuRunner.PageContent doesn't expose base64 string directly, it's either .url, .text, .image(PlatformImage) or .zipFile
+                    else if case .image(let pageImage) = page.content {
+                        #if canImport(UIKit)
+                        image = pageImage
+                        #endif
                     }
-                    // 3. Try custom loading via source (if needed, but getChapterPages usually resolves this)
-                    // If image is nil, we might need to download it? But we ensured chapter is downloaded.
-                    // If downloaded, page.imageURL usually points to local file.
-
-                    // Fallback: If remote URL and we are "downloaded", maybe we can find it in DownloadManager path?
-                    if image == nil, let urlStr = page.imageURL, let _ = URL(string: urlStr) {
-                         // Try to load from known download path?
-                         // Skip for now, assume getChapterPages returns valid local paths for downloaded chapters.
-                    }
+                    // 3. Handle other cases if necessary
 
                     if let image = image {
                         // Generate cache key
-                        let keyString = "\(chapterKey)-\(page.index)-\(targetLang)-\(finalModel)"
+                        let keyString = "\(chapterKey)-\(index)-\(targetLang)-\(finalModel)"
                         let cacheKey = keyString.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
 
                         _ = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint, cacheKey: cacheKey)
