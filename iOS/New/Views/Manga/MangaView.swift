@@ -314,10 +314,23 @@ extension MangaView {
             downloadStatus: downloadStatus,
             downloadProgress: viewModel.downloadProgress[chapter.key],
             displayMode: viewModel.chapterTitleDisplayMode,
+            translationStatus: viewModel.translationStatus[chapter.key] ?? .idle,
             isEditing: editMode == .active,
             onTranslate: {
-                autoTranslateOpenChapter = true
-                openChapter = chapter
+                let status = viewModel.translationStatus[chapter.key] ?? .idle
+                if status == .completed {
+                    autoTranslateOpenChapter = true
+                    openChapter = chapter
+                } else {
+                    switch status {
+                    case .idle, .failed:
+                        if let source = viewModel.source {
+                            TranslationManager.shared.translateChapter(chapter: chapter, manga: viewModel.manga, source: source)
+                        }
+                    default:
+                        break
+                    }
+                }
             }
         ) {
             if editMode == .inactive {
@@ -739,6 +752,7 @@ private struct ChapterCellView<T: View>: View, Equatable {
     let downloadStatus: DownloadStatus
     let downloadProgress: Float?
     let displayMode: ChapterTitleDisplayMode
+    var translationStatus: TranslationStatus = .idle
     let isEditing: Bool
     var onTranslate: (() -> Void)?
 
@@ -760,6 +774,7 @@ private struct ChapterCellView<T: View>: View, Equatable {
                 downloadStatus: downloadStatus,
                 downloadProgress: downloadProgress,
                 displayMode: displayMode,
+                translationStatus: translationStatus,
                 onTranslate: isEditing ? nil : onTranslate
             )
         }
@@ -787,6 +802,7 @@ private struct ChapterCellView<T: View>: View, Equatable {
             && lhs.downloadStatus == rhs.downloadStatus
             && lhs.downloadProgress == rhs.downloadProgress
             && lhs.displayMode == rhs.displayMode
+            && lhs.translationStatus == rhs.translationStatus
             && lhs.isEditing == rhs.isEditing
     }
 }

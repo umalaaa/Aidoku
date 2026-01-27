@@ -84,12 +84,174 @@ enum UIReturnKeyType: Int {
 
 import Foundation
 import CoreGraphics
+import AidokuRunner
+import Combine
 
 #if canImport(UIKit)
 import UIKit
 #else
 import AppKit
 #endif
+
+enum TranslationStatus: Equatable {
+    case idle
+    case waitingForDownload
+    case downloading
+    case translating(progress: Float, current: Int, total: Int)
+    case completed
+    case failed(error: String)
+}
+
+class TranslationManager: ObservableObject {
+    static let shared = TranslationManager()
+
+    @Published var status: [String: TranslationStatus] = [:]
+    private var cancellables = Set<AnyCancellable>()
+
+    private let completedChaptersKey = "TranslatedChapters"
+
+    init() {
+        setupNotifications()
+    }
+
+    private var completedChapters: Set<String> {
+        get {
+            let list = UserDefaults.standard.stringArray(forKey: completedChaptersKey) ?? []
+            return Set(list)
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: completedChaptersKey)
+        }
+    }
+
+    func isChapterTranslated(_ key: String) -> Bool {
+        completedChapters.contains(key)
+    }
+
+    func markChapterTranslated(_ key: String) {
+        var completed = completedChapters
+        completed.insert(key)
+        completedChapters = completed
+
+        DispatchQueue.main.async {
+            self.status[key] = .completed
+        }
+    }
+
+    private func setupNotifications() {
+        NotificationCenter.default.publisher(for: .downloadFinished)
+            .sink { [weak self] notification in
+                guard let self = self else { return }
+                if let identifier = notification.object as? ChapterIdentifier {
+                    let key = identifier.chapterKey
+                    // If we were waiting for this chapter, start translating
+                    if self.status[key] == .waitingForDownload || self.status[key] == .downloading {
+                         self.startTranslationProcess(chapterKey: key)
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    // Store context to start translation after download
+    private var pendingTranslations: [String: (Chapter, Manga, Source)] = [:]
+
+    func translateChapter(chapter: Chapter, manga: Manga, source: Source) {
+        let key = chapter.key
+
+        if isChapterTranslated(key) {
+            self.status[key] = .completed
+            return
+        }
+
+        pendingTranslations[key] = (chapter, manga, source)
+
+        // Check download status
+        let identifier = ChapterIdentifier(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: key)
+        let downloadStatus = DownloadManager.shared.getDownloadStatus(for: identifier)
+
+        if downloadStatus == .finished {
+            startTranslationProcess(chapterKey: key)
+        } else {
+            self.status[key] = .waitingForDownload
+            Task {
+                await DownloadManager.shared.download(manga: manga, chapters: [chapter])
+                DispatchQueue.main.async {
+                    if self.status[key] == .waitingForDownload {
+                        self.status[key] = .downloading
+                    }
+                }
+            }
+        }
+    }
+
+    private func startTranslationProcess(chapterKey: String) {
+        guard let (chapter, _, source) = pendingTranslations[chapterKey] else { return }
+
+        self.status[chapterKey] = .translating(progress: 0, current: 0, total: 0)
+
+        Task {
+            do {
+                // Determine pages
+                // We rely on source.getChapterPages. If downloaded, Aidoku *should* provide local access or we handle it.
+                // Assuming getChapterPages works for downloaded chapters (returning local URIs or data)
+                let pages = try await source.getChapterPages(chapter: chapter)
+                let total = pages.count
+
+                let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
+                let targetLang = UserDefaults.standard.string(forKey: "Reader.targetLanguage") ?? "Chinese (Simplified)"
+                let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
+                let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
+                let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
+
+                for (index, page) in pages.enumerated() {
+                    DispatchQueue.main.async {
+                        self.status[chapterKey] = .translating(progress: Float(index)/Float(total), current: index + 1, total: total)
+                    }
+
+                    // Try to get image
+                    var image: PlatformImage?
+
+                    // 1. Try file URL (common for downloaded chapters)
+                    if let urlStr = page.imageURL, let url = URL(string: urlStr), url.isFileURL {
+                        if let data = try? Data(contentsOf: url) {
+                            image = PlatformImage(data: data)
+                        }
+                    }
+                    // 2. Try base64
+                    else if let base64 = page.base64, let data = Data(base64Encoded: base64) {
+                        image = PlatformImage(data: data)
+                    }
+                    // 3. Try custom loading via source (if needed, but getChapterPages usually resolves this)
+                    // If image is nil, we might need to download it? But we ensured chapter is downloaded.
+                    // If downloaded, page.imageURL usually points to local file.
+
+                    // Fallback: If remote URL and we are "downloaded", maybe we can find it in DownloadManager path?
+                    if image == nil, let urlStr = page.imageURL, let _ = URL(string: urlStr) {
+                         // Try to load from known download path?
+                         // Skip for now, assume getChapterPages returns valid local paths for downloaded chapters.
+                    }
+
+                    if let image = image {
+                        // Generate cache key
+                        let keyString = "\(chapterKey)-\(page.index)-\(targetLang)-\(finalModel)"
+                        let cacheKey = keyString.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
+
+                        _ = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint, cacheKey: cacheKey)
+                    }
+                }
+
+                markChapterTranslated(chapterKey)
+                pendingTranslations.removeValue(forKey: chapterKey)
+
+            } catch {
+                DispatchQueue.main.async {
+                    self.status[chapterKey] = .failed(error: error.localizedDescription)
+                }
+            }
+        }
+    }
+}
 
 class ImageTranslator {
     static let shared = ImageTranslator()

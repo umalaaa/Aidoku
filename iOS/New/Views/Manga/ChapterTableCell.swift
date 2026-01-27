@@ -17,6 +17,7 @@ struct ChapterTableCell: View {
     let downloadStatus: DownloadStatus
     var downloadProgress: Float?
     let displayMode: ChapterTitleDisplayMode
+    var translationStatus: TranslationStatus = .idle
     var onTranslate: (() -> Void)? = nil
 
     var downloaded: Bool {
@@ -70,9 +71,32 @@ struct ChapterTableCell: View {
 
             if let onTranslate {
                 Button(action: onTranslate) {
-                    Image(systemName: "globe")
-                        .imageScale(.small)
-                        .foregroundStyle(.blue)
+                    switch translationStatus {
+                    case .completed:
+                        Image(systemName: "globe")
+                            .imageScale(.small)
+                            .foregroundStyle(.orange)
+                    case .waitingForDownload, .downloading:
+                        if #available(iOS 14.0, *) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "globe")
+                                .imageScale(.small)
+                                .foregroundStyle(.gray)
+                        }
+                    case .translating(let p, _, _):
+                         DownloadProgressView(progress: p)
+                            .frame(width: 13, height: 13)
+                    case .failed:
+                        Image(systemName: "exclamationmark.triangle")
+                            .imageScale(.small)
+                            .foregroundStyle(.red)
+                    case .idle:
+                        Image(systemName: "globe")
+                            .imageScale(.small)
+                            .foregroundStyle(.blue)
+                    }
                 }
                 .padding(.leading, 8)
                 .buttonStyle(BorderlessButtonStyle())
