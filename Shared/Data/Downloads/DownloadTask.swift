@@ -207,7 +207,11 @@ extension DownloadTask {
                 manga: download.manga,
                 chapter: download.chapter
             )) ?? []).enumerated().map { index, page in
-                page.toOld(sourceId: source.key, chapterId: download.chapterIdentifier.chapterKey, index: index)
+                page.toOld(
+                    sourceId: source.key,
+                    chapterId: download.chapterIdentifier.chapterKey,
+                    index: index
+                )
             }
             guard running && downloads.first == download else { return }
             downloads[0].total = pages.count
