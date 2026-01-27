@@ -324,12 +324,9 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
         var cacheKey: String?
         if let chapterId = node.page.chapterId as String? {
             let keyString = "\(chapterId)-\(node.page.index)-\(targetLang)-\(finalModel)"
-            if let data = keyString.data(using: .utf8) {
-                // SHA256 not directly available easily without import CommonCrypto, use simple hashing for now or just the string if filesystem allows
-                // Filenames can be long, so hashing is better.
-                // Assuming simple string is fine for now, sanitized.
-                cacheKey = keyString.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
-            }
+            // Filenames can be long, so hashing is better.
+            // Assuming simple string is fine for now, sanitized.
+            cacheKey = keyString.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
         }
 
         node.setTranslating(true)

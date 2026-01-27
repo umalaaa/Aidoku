@@ -102,6 +102,7 @@ public enum TranslationStatus: Equatable {
     case failed(error: String)
 }
 
+@MainActor
 public class TranslationManager: ObservableObject {
     public static let shared = TranslationManager()
 
@@ -193,9 +194,9 @@ public class TranslationManager: ObservableObject {
         Task {
             do {
                 // Determine pages
-                // We rely on source.getChapterPages. If downloaded, Aidoku *should* provide local access or we handle it.
-                // Assuming getChapterPages works for downloaded chapters (returning local URIs or data)
-                let pages = try await source.getChapterPages(chapter: chapter)
+                // We rely on source.getPageList. If downloaded, Aidoku *should* provide local access or we handle it.
+                // Assuming getPageList works for downloaded chapters (returning local URIs or data)
+                let pages = try await source.getPageList(chapter: chapter)
                 let total = pages.count
 
                 let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
@@ -205,9 +206,7 @@ public class TranslationManager: ObservableObject {
                 let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
 
                 for (index, page) in pages.enumerated() {
-                    DispatchQueue.main.async {
-                        self.status[chapterKey] = .translating(progress: Float(index)/Float(total), current: index + 1, total: total)
-                    }
+                    self.status[chapterKey] = .translating(progress: Float(index)/Float(total), current: index + 1, total: total)
 
                     // Try to get image
                     var image: PlatformImage?
@@ -417,15 +416,15 @@ public class ImageTranslator {
 
     private func stitchImages(originalSize: CGSize, parts: [CGRect], images: [PlatformImage]) -> PlatformImage {
         #if canImport(UIKit)
-        UIGraphicsBeginImageContextWithOptions(originalSize, true, 1.0)
-
-        for (i, rect) in parts.enumerated() where i < images.count {
-            images[i].draw(in: rect)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1.0
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: originalSize, format: format)
+        return renderer.image { context in
+            for (i, rect) in parts.enumerated() where i < images.count {
+                images[i].draw(in: rect)
+            }
         }
-
-        let result = UIGraphicsGetImageFromCurrentImageContext() ?? PlatformImage()
-        UIGraphicsEndImageContext()
-        return result
         #else
         // Simplified macOS placeholder if needed
         return PlatformImage()

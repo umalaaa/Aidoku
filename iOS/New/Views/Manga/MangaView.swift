@@ -754,7 +754,7 @@ private struct ChapterCellView<T: View>: View, Equatable {
     let downloadStatus: DownloadStatus
     let downloadProgress: Float?
     let displayMode: ChapterTitleDisplayMode
-    var translationStatus: TranslationStatus = .idle
+    let translationStatus: TranslationStatus
     let isEditing: Bool
     var onTranslate: (() -> Void)?
 
