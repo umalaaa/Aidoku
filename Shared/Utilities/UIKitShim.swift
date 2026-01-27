@@ -8,14 +8,14 @@
 #if canImport(UIKit)
 
 import UIKit
-typealias PlatformImage = UIImage
-typealias PlatformColor = UIColor
+public typealias PlatformImage = UIImage
+public typealias PlatformColor = UIColor
 
 #else
 
 import AppKit
-typealias PlatformImage = NSImage
-typealias PlatformColor = NSColor
+public typealias PlatformImage = NSImage
+public typealias PlatformColor = NSColor
 
 extension NSImage {
     func pngData() -> Data? {
