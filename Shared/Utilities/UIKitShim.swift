@@ -93,7 +93,7 @@ import UIKit
 import AppKit
 #endif
 
-enum TranslationStatus: Equatable {
+public enum TranslationStatus: Equatable {
     case idle
     case waitingForDownload
     case downloading
@@ -102,10 +102,10 @@ enum TranslationStatus: Equatable {
     case failed(error: String)
 }
 
-class TranslationManager: ObservableObject {
-    static let shared = TranslationManager()
+public class TranslationManager: ObservableObject {
+    public static let shared = TranslationManager()
 
-    @Published var status: [String: TranslationStatus] = [:]
+    @Published public var status: [String: TranslationStatus] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     private let completedChaptersKey = "TranslatedChapters"
@@ -124,7 +124,7 @@ class TranslationManager: ObservableObject {
         }
     }
 
-    func isChapterTranslated(_ key: String) -> Bool {
+    public func isChapterTranslated(_ key: String) -> Bool {
         completedChapters.contains(key)
     }
 
@@ -154,9 +154,9 @@ class TranslationManager: ObservableObject {
     }
 
     // Store context to start translation after download
-    private var pendingTranslations: [String: (Chapter, Manga, Source)] = [:]
+    private var pendingTranslations: [String: (AidokuRunner.Chapter, AidokuRunner.Manga, AidokuRunner.Source)] = [:]
 
-    func translateChapter(chapter: Chapter, manga: Manga, source: Source) {
+    public func translateChapter(chapter: AidokuRunner.Chapter, manga: AidokuRunner.Manga, source: AidokuRunner.Source) {
         let key = chapter.key
 
         if isChapterTranslated(key) {
@@ -253,8 +253,8 @@ class TranslationManager: ObservableObject {
     }
 }
 
-class ImageTranslator {
-    static let shared = ImageTranslator()
+public class ImageTranslator {
+    public static let shared = ImageTranslator()
 
     // Supported aspect ratios for Gemini Vision
     private let supportedRatios: [CGFloat] = [
@@ -271,7 +271,7 @@ class ImageTranslator {
         9.0 / 21.0  // 9:21
     ]
 
-    func translate(image: PlatformImage, apiKey: String, targetLang: String, model: String = "gemini-1.5-pro", apiEndpoint: String? = nil, cacheKey: String? = nil) async throws -> PlatformImage {
+    public func translate(image: PlatformImage, apiKey: String, targetLang: String, model: String = "gemini-1.5-pro", apiEndpoint: String? = nil, cacheKey: String? = nil) async throws -> PlatformImage {
         // Check cache first
         if let cacheKey, let cached = checkCache(key: cacheKey) {
             return cached
@@ -323,17 +323,17 @@ class ImageTranslator {
         }
     }
 
-    func getCachedImages() -> [URL] {
+    public func getCachedImages() -> [URL] {
         let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
         guard let files = try? FileManager.default.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil) else { return [] }
         return files.filter { $0.pathExtension == "png" }
     }
 
-    func deleteCachedImage(url: URL) {
+    public func deleteCachedImage(url: URL) {
         try? FileManager.default.removeItem(at: url)
     }
 
-    func clearCache() {
+    public func clearCache() {
         let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
         try? FileManager.default.removeItem(at: cacheDir)
     }
@@ -543,7 +543,7 @@ class ImageTranslator {
         return responseImage
     }
 
-    func validateConfiguration(apiKey: String, apiEndpoint: String?) async throws {
+    public func validateConfiguration(apiKey: String, apiEndpoint: String?) async throws {
         let baseUrl = apiEndpoint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? apiEndpoint! : "https://generativelanguage.googleapis.com"
         let urlString = "\(baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/v1beta/models?key=\(apiKey)"
 
@@ -568,7 +568,7 @@ class ImageTranslator {
         }
     }
 
-    enum TranslationError: Error {
+    public enum TranslationError: Error {
         case invalidImage
         case encodingFailed
         case apiError
