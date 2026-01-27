@@ -331,26 +331,28 @@ extension MangaView {
                         break
                     }
                 }
-            }
-        ) {
-            if editMode == .inactive {
-                openChapter = chapter
-            } else {
-                if selectedChapters.contains(chapter.key) {
-                    selectedChapters.remove(chapter.key)
+            },
+            onPressed: {
+                if editMode == .inactive {
+                    openChapter = chapter
                 } else {
-                    selectedChapters.insert(chapter.key)
+                    if selectedChapters.contains(chapter.key) {
+                        selectedChapters.remove(chapter.key)
+                    } else {
+                        selectedChapters.insert(chapter.key)
+                    }
                 }
+            },
+            contextMenu: {
+                contextMenu(
+                    chapter: chapter,
+                    downloadStatus: downloadStatus,
+                    index: index,
+                    last: last,
+                    secondSection: secondSection
+                )
             }
-        } contextMenu: {
-            contextMenu(
-                chapter: chapter,
-                downloadStatus: downloadStatus,
-                index: index,
-                last: last,
-                secondSection: secondSection
-            )
-        }
+        )
         // use equatableview to determine when to refresh the view
         // improves the scrolling performance of the list
         .equatable()

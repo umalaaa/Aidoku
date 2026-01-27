@@ -419,10 +419,8 @@ public class ImageTranslator {
         #if canImport(UIKit)
         UIGraphicsBeginImageContextWithOptions(originalSize, true, 1.0)
 
-        for (i, rect) in parts.enumerated() {
-            if i < images.count {
-                images[i].draw(in: rect)
-            }
+        for (i, rect) in parts.enumerated() where i < images.count {
+            images[i].draw(in: rect)
         }
 
         let result = UIGraphicsGetImageFromCurrentImageContext() ?? PlatformImage()

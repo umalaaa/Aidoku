@@ -18,7 +18,7 @@ struct ChapterTableCell: View {
     var downloadProgress: Float?
     let displayMode: ChapterTitleDisplayMode
     var translationStatus: TranslationStatus = .idle
-    var onTranslate: (() -> Void)? = nil
+    var onTranslate: (() -> Void)?
 
     var downloaded: Bool {
         downloadStatus == .finished
