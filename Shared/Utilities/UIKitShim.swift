@@ -187,14 +187,18 @@ public class TranslationManager: ObservableObject {
     }
 
     private func startTranslationProcess(chapterKey: String) {
-        guard let (chapter, manga, source) = pendingTranslations[chapterKey] else { return }
+        guard let (chapter, manga, _) = pendingTranslations[chapterKey] else { return }
 
         self.status[chapterKey] = .translating(progress: 0, current: 0, total: 0)
 
         Task {
             do {
                 // Get downloaded pages (local URLs)
-                let identifier = ChapterIdentifier(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: chapterKey)
+                let identifier = ChapterIdentifier(
+                    sourceKey: manga.sourceKey,
+                    mangaKey: manga.key,
+                    chapterKey: chapterKey
+                )
                 let pageURLs = DownloadManager.shared.getDownloadedPages(for: identifier)
 
                 let total = pageURLs.count
@@ -211,7 +215,11 @@ public class TranslationManager: ObservableObject {
                 let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
 
                 for (index, url) in pageURLs.enumerated() {
-                    self.status[chapterKey] = .translating(progress: Float(index)/Float(total), current: index + 1, total: total)
+                    self.status[chapterKey] = .translating(
+                        progress: Float(index) / Float(total),
+                        current: index + 1,
+                        total: total
+                    )
 
                     // Try to get image from local file
                     var image: PlatformImage?
@@ -223,9 +231,18 @@ public class TranslationManager: ObservableObject {
                     if let image = image {
                         // Generate cache key
                         let keyString = "\(chapterKey)-\(index)-\(targetLang)-\(finalModel)"
-                        let cacheKey = keyString.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
+                        let cacheKey = keyString
+                            .replacingOccurrences(of: "/", with: "_")
+                            .replacingOccurrences(of: ":", with: "_")
 
-                        _ = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint, cacheKey: cacheKey)
+                        _ = try await ImageTranslator.shared.translate(
+                            image: image,
+                            apiKey: apiKey,
+                            targetLang: targetLang,
+                            model: finalModel,
+                            apiEndpoint: apiEndpoint,
+                            cacheKey: cacheKey
+                        )
                     }
                 }
 
@@ -244,6 +261,10 @@ public class TranslationManager: ObservableObject {
 public class ImageTranslator {
     public static let shared = ImageTranslator()
 
+    private var cacheDirectory: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
+    }
+
     // Supported aspect ratios for Gemini Vision
     private let supportedRatios: [CGFloat] = [
         1.0,        // 1:1
@@ -259,7 +280,14 @@ public class ImageTranslator {
         9.0 / 21.0  // 9:21
     ]
 
-    public func translate(image: PlatformImage, apiKey: String, targetLang: String, model: String = "gemini-1.5-pro", apiEndpoint: String? = nil, cacheKey: String? = nil) async throws -> PlatformImage {
+    public func translate(
+        image: PlatformImage,
+        apiKey: String,
+        targetLang: String,
+        model: String = "gemini-1.5-pro",
+        apiEndpoint: String? = nil,
+        cacheKey: String? = nil
+    ) async throws -> PlatformImage {
         // Check cache first
         if let cacheKey, let cached = checkCache(key: cacheKey) {
             return cached
@@ -275,13 +303,23 @@ public class ImageTranslator {
 
         let result: PlatformImage
         // Split if necessary (Webtoon strip logic or too large)
-        // Gemini has a ~4096px limit per side usually, or total pixel limit.
-        // Splitting very tall images is safer.
         if ratio < 0.6 || ratio > 1.8 || width > 4000 || height > 4000 {
-            result = try await splitAndTranslate(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
+            result = try await splitAndTranslate(
+                image: image,
+                apiKey: apiKey,
+                targetLang: targetLang,
+                model: model,
+                apiEndpoint: apiEndpoint
+            )
         } else {
             // Single image translation (with padding if needed)
-            result = try await processSingleImage(image: image, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
+            result = try await processSingleImage(
+                image: image,
+                apiKey: apiKey,
+                targetLang: targetLang,
+                model: model,
+                apiEndpoint: apiEndpoint
+            )
         }
 
         // Save to cache
@@ -292,8 +330,7 @@ public class ImageTranslator {
     }
 
     private func checkCache(key: String) -> PlatformImage? {
-        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
-        let fileURL = cacheDir.appendingPathComponent(key).appendingPathExtension("png")
+        let fileURL = cacheDirectory.appendingPathComponent(key).appendingPathExtension("png")
         if let data = try? Data(contentsOf: fileURL) {
             return PlatformImage(data: data)
         }
@@ -301,19 +338,20 @@ public class ImageTranslator {
     }
 
     private func saveToCache(image: PlatformImage, key: String) {
-        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
-        if !FileManager.default.fileExists(atPath: cacheDir.path) {
-            try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: cacheDirectory.path) {
+            try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         }
-        let fileURL = cacheDir.appendingPathComponent(key).appendingPathExtension("png")
+        let fileURL = cacheDirectory.appendingPathComponent(key).appendingPathExtension("png")
         if let data = image.pngData() {
             try? data.write(to: fileURL, options: .atomic)
         }
     }
 
     public func getCachedImages() -> [URL] {
-        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
-        guard let files = try? FileManager.default.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil) else { return [] }
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: cacheDirectory,
+            includingPropertiesForKeys: nil
+        ) else { return [] }
         return files.filter { $0.pathExtension == "png" }
     }
 
@@ -322,11 +360,16 @@ public class ImageTranslator {
     }
 
     public func clearCache() {
-        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
-        try? FileManager.default.removeItem(at: cacheDir)
+        try? FileManager.default.removeItem(at: cacheDirectory)
     }
 
-    private func splitAndTranslate(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {
+    private func splitAndTranslate(
+        image: PlatformImage,
+        apiKey: String,
+        targetLang: String,
+        model: String,
+        apiEndpoint: String?
+    ) async throws -> PlatformImage {
         guard let cgImage = image.cgImage else { throw TranslationError.invalidImage }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
@@ -336,8 +379,7 @@ public class ImageTranslator {
 
         if ratio < 0.6 {
             // Vertical split (Tall image)
-            // Split into chunks of height approx equal to width * 1.5 (3:2 ratio roughly, vertical)
-            // or just ensure max dimension < 3000
+            // Split into chunks of height approx equal to width * 1.5
             let targetHeight = min(height, 3000)
             let count = Int(ceil(height / targetHeight))
             let actualPartHeight = height / CGFloat(count)
@@ -362,14 +404,30 @@ public class ImageTranslator {
         for (index, rect) in parts.enumerated() {
             guard let partCG = cgImage.cropping(to: rect) else { continue }
             let partImage = PlatformImage(cgImage: partCG)
-            let translatedPart = try await processSingleImage(image: partImage, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
+            let translatedPart = try await processSingleImage(
+                image: partImage,
+                apiKey: apiKey,
+                targetLang: targetLang,
+                model: model,
+                apiEndpoint: apiEndpoint
+            )
             translatedImages.append((index, translatedPart))
         }
 
-        return stitchImages(originalSize: CGSize(width: width, height: height), parts: parts, images: translatedImages.map { $0.1 })
+        return stitchImages(
+            originalSize: CGSize(width: width, height: height),
+            parts: parts,
+            images: translatedImages.map { $0.1 }
+        )
     }
 
-    private func processSingleImage(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {
+    private func processSingleImage(
+        image: PlatformImage,
+        apiKey: String,
+        targetLang: String,
+        model: String,
+        apiEndpoint: String?
+    ) async throws -> PlatformImage {
         guard let cgImage = image.cgImage else { throw TranslationError.invalidImage }
         let width = CGFloat(cgImage.width)
         let height = CGFloat(cgImage.height)
@@ -393,7 +451,13 @@ public class ImageTranslator {
         }
 
         // Call API
-        let resultImage = try await callGemini(image: imageToTranslate, apiKey: apiKey, targetLang: targetLang, model: model, apiEndpoint: apiEndpoint)
+        let resultImage = try await callGemini(
+            image: imageToTranslate,
+            apiKey: apiKey,
+            targetLang: targetLang,
+            model: model,
+            apiEndpoint: apiEndpoint
+        )
 
         // Crop if padded
         if let info = paddingInfo {
@@ -473,12 +537,21 @@ public class ImageTranslator {
          return PlatformImage(cgImage: cropped)
     }
 
-    private func callGemini(image: PlatformImage, apiKey: String, targetLang: String, model: String, apiEndpoint: String?) async throws -> PlatformImage {
+    private func callGemini(
+        image: PlatformImage,
+        apiKey: String,
+        targetLang: String,
+        model: String,
+        apiEndpoint: String?
+    ) async throws -> PlatformImage {
         guard let data = image.pngData() else { throw TranslationError.encodingFailed }
         let base64 = data.base64EncodedString()
 
-        let baseUrl = apiEndpoint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? apiEndpoint! : "https://generativelanguage.googleapis.com"
-        let urlString = "\(baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/v1beta/models/\(model):generateContent?key=\(apiKey)"
+        let baseUrl = apiEndpoint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? apiEndpoint!
+            : "https://generativelanguage.googleapis.com"
+        let trimmedUrl = baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let urlString = "\(trimmedUrl)/v1beta/models/\(model):generateContent?key=\(apiKey)"
 
         guard let url = URL(string: urlString) else { throw TranslationError.apiError }
         var request = URLRequest(url: url)
@@ -519,8 +592,8 @@ public class ImageTranslator {
 
         let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: responseData)
 
-        guard let part = geminiResponse.candidates?.first?.content?.parts?.first(where: { $0.inlineData != nil }),
-              let base64Response = part.inlineData?.data,
+        let part = geminiResponse.candidates?.first?.content?.parts?.first(where: { $0.inlineData != nil })
+        guard let base64Response = part?.inlineData?.data,
               let responseData = Data(base64Encoded: base64Response),
               let responseImage = PlatformImage(data: responseData) else {
             throw TranslationError.noImageInResponse
@@ -530,8 +603,11 @@ public class ImageTranslator {
     }
 
     public func validateConfiguration(apiKey: String, apiEndpoint: String?) async throws {
-        let baseUrl = apiEndpoint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? apiEndpoint! : "https://generativelanguage.googleapis.com"
-        let urlString = "\(baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))/v1beta/models?key=\(apiKey)"
+        let baseUrl = apiEndpoint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? apiEndpoint!
+            : "https://generativelanguage.googleapis.com"
+        let trimmedUrl = baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let urlString = "\(trimmedUrl)/v1beta/models?key=\(apiKey)"
 
         guard let url = URL(string: urlString) else { throw TranslationError.apiError }
         var request = URLRequest(url: url)
