@@ -199,9 +199,9 @@ public class TranslationManager: ObservableObject {
                     mangaKey: manga.key,
                     chapterKey: chapterKey
                 )
-                let pageURLs = DownloadManager.shared.getDownloadedPages(for: identifier)
+                let pages = await DownloadManager.shared.getDownloadedPages(for: identifier)
 
-                let total = pageURLs.count
+                let total = pages.count
 
                 if total == 0 {
                     self.status[chapterKey] = .failed(error: "No downloaded pages found")
@@ -214,7 +214,7 @@ public class TranslationManager: ObservableObject {
                 let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
                 let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
 
-                for (index, url) in pageURLs.enumerated() {
+                for (index, page) in pages.enumerated() {
                     self.status[chapterKey] = .translating(
                         progress: Float(index) / Float(total),
                         current: index + 1,
@@ -224,7 +224,7 @@ public class TranslationManager: ObservableObject {
                     // Try to get image from local file
                     var image: PlatformImage?
 
-                    if let data = try? Data(contentsOf: url) {
+                    if case .url(let url, _) = page.content, let data = try? Data(contentsOf: url) {
                         image = PlatformImage(data: data)
                     }
 
