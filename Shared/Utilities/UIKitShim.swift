@@ -136,6 +136,7 @@ public class TranslationManager: ObservableObject {
 
         DispatchQueue.main.async {
             self.status[key] = .completed
+            NotificationCenter.default.post(name: .init("ChapterTranslated"), object: key)
         }
     }
 
@@ -230,10 +231,12 @@ public class TranslationManager: ObservableObject {
 
                     if let image = image {
                         // Generate cache key
-                        let keyString = "\(chapterKey)-\(index)-\(targetLang)-\(finalModel)"
-                        let cacheKey = keyString
-                            .replacingOccurrences(of: "/", with: "_")
-                            .replacingOccurrences(of: ":", with: "_")
+                        let cacheKey = ImageTranslator.generateCacheKey(
+                            chapterId: chapterKey,
+                            index: index,
+                            targetLang: targetLang,
+                            model: finalModel
+                        )
 
                         _ = try await ImageTranslator.shared.translate(
                             image: image,
@@ -263,6 +266,13 @@ public class ImageTranslator {
 
     private var cacheDirectory: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
+    }
+
+    public static func generateCacheKey(chapterId: String, index: Int, targetLang: String, model: String) -> String {
+        let keyString = "\(chapterId)-\(index)-\(targetLang)-\(model)"
+        return keyString
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: ":", with: "_")
     }
 
     // Supported aspect ratios for Gemini Vision

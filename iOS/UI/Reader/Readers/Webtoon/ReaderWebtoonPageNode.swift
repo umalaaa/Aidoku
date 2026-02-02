@@ -90,6 +90,18 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
             self?.pillarboxOrientation = notification.object as? String ?? "both"
             self?.transition()
         }
+
+        // Listen for translation completion
+        addObserver(forName: .init("ChapterTranslated")) { [weak self] notification in
+            guard let self = self, let delegate = self.delegate, delegate.autoTranslate else { return }
+
+            // Check if this notification is for our chapter
+            if let chapterId = notification.object as? String, chapterId == self.page.chapterId {
+                Task { @MainActor in
+                    await self.reloadCurrentImage()
+                }
+            }
+        }
     }
 
     override func didEnterDisplayState() {
@@ -250,13 +262,16 @@ extension ReaderWebtoonPageNode {
         // Try to load translated cache first if enabled or available
         if let delegate = delegate, delegate.autoTranslate {
             // Reconstruct cache key: "\(chapterId)-\(index)-\(targetLang)-\(model)"
-            let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
             let targetLang = UserDefaults.standard.string(forKey: "Reader.targetLanguage") ?? "Chinese (Simplified)"
             let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
             let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
 
-            let keyString = "\(page.chapterId)-\(page.index)-\(targetLang)-\(finalModel)"
-            let cacheKey = keyString.replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: ":", with: "_")
+            let cacheKey = ImageTranslator.generateCacheKey(
+                chapterId: page.chapterId,
+                index: page.index,
+                targetLang: targetLang,
+                model: finalModel
+            )
 
             let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
             let fileURL = cacheDir.appendingPathComponent(cacheKey).appendingPathExtension("png")
