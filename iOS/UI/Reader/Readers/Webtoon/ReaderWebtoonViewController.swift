@@ -335,7 +335,14 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
         defer { node.setTranslating(false) }
 
         do {
-            let translatedImage = try await ImageTranslator.shared.translate(image: image, apiKey: apiKey, targetLang: targetLang, model: finalModel, apiEndpoint: apiEndpoint, cacheKey: cacheKey)
+            let translatedImage = try await ImageTranslator.shared.translate(
+                image: image,
+                apiKey: apiKey,
+                targetLang: targetLang,
+                model: finalModel,
+                apiEndpoint: apiEndpoint,
+                cacheKey: cacheKey
+            )
             node.image = translatedImage
             node.isTranslated = true
             node.displayPage()

@@ -139,7 +139,8 @@ extension LocalFileNameParser {
         #"^(?!Vol)(?!Chapter)(?<Series>.+?)(-|_|\s|#)\d+(-\d+)?(권|화|話)"#,
         // [BAA]_Darker_than_Black_Omake-1, Bleach 001-002, Kodoja #001 (March 2016)
         #"^(?!Vol)(?!Chapter)(?<Series>.+?)(-|_|\s|#)\d+(-\d+)?"#,
-        // Baketeriya ch01-05.zip, Akiiro Bousou Biyori - 01.jpg, Beelzebub_172_RHS.zip, Cynthia the Mission 29.rar, A Compendium of Ghosts - 031 - The Third Story_ Part 12 (Digital) (Cobalt001)
+        // Baketeriya ch01-05.zip, Akiiro Bousou Biyori - 01.jpg, Beelzebub_172_RHS.zip, Cynthia the Mission 29.rar,
+        // A Compendium of Ghosts - 031 - The Third Story_ Part 12 (Digital) (Cobalt001)
         #"^(?!Vol\.?)(?!Chapter)(?<Series>.+?)(\s|_|-)(?<!-)(ch|chapter)?\.?\d+-?\d*"#,
         // [BAA]_Darker_than_Black_c1 (This is very greedy, make sure it's close to last)
         #"^(?!Vol)(?<Series>.*)( |_|-)(ch?)\d+"#,
