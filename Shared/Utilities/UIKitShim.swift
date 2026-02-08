@@ -261,6 +261,7 @@ public class TranslationManager: ObservableObject {
     }
 }
 
+@MainActor
 public class ImageTranslator {
     public static let shared = ImageTranslator()
 
