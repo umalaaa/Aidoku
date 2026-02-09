@@ -16,6 +16,7 @@ import ZIPFoundation
 class ReaderWebtoonPageNode: BaseObservingCellNode {
     let source: AidokuRunner.Source?
     let page: Page
+    let mangaKey: String
 
     weak var delegate: ReaderWebtoonViewController?
 
@@ -61,10 +62,12 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
 
     init(
         source: AidokuRunner.Source?,
-        page: Page
+        page: Page,
+        mangaKey: String
     ) {
         self.source = source
         self.page = page
+        self.mangaKey = mangaKey
         super.init()
         automaticallyManagesSubnodes = true
         shouldAnimateSizeChanges = false
@@ -232,6 +235,13 @@ extension ReaderWebtoonPageNode {
         progressNode.isHidden = false
         progressNode.isUserInteractionEnabled = false
 
+        if let translatedURL = await TranslationManager.shared.translatedImageURL(for: page, mangaKey: mangaKey) {
+            let didLoad = await loadTranslatedImage(url: translatedURL)
+            if didLoad {
+                return
+            }
+        }
+
         if let image = page.image {
             self.image = image
             if isNodeLoaded {
@@ -249,6 +259,20 @@ extension ReaderWebtoonPageNode {
         } else {
             // TODO: show error
         }
+    }
+
+    private func loadTranslatedImage(url: URL) async -> Bool {
+        defer { loading = false }
+        let image: UIImage? = await Task.detached {
+            UIImage(contentsOfFile: url.path) ?? (try? Data(contentsOf: url)).flatMap(UIImage.init)
+        }.value
+
+        guard let image else { return false }
+        self.image = image
+        if isNodeLoaded {
+            displayPage()
+        }
+        return true
     }
 
     private func loadImage(url: URL, context: PageContext?) async {

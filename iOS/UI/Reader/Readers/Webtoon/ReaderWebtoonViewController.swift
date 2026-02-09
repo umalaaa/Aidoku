@@ -111,6 +111,18 @@ class ReaderWebtoonViewController: ZoomableCollectionViewController {
                 }
             }
         }
+
+        addObserver(forName: .imageTranslationUpdated) { [weak self] notification in
+            guard
+                let update = notification.object as? ImageTranslationUpdate,
+                UserDefaults.standard.bool(forKey: ImageTranslationSettings.enabledKey)
+            else {
+                return
+            }
+            Task { @MainActor in
+                self?.handleTranslationUpdate(update)
+            }
+        }
     }
 
     enum ScreenPosition {
@@ -153,6 +165,22 @@ class ReaderWebtoonViewController: ZoomableCollectionViewController {
             } else {
                 let scale = zoomView.scrollNode.view.zoomScale
                 pageNode.setLiveTextHidden(scale != 1)
+            }
+        }
+    }
+
+    @MainActor
+    private func handleTranslationUpdate(_ update: ImageTranslationUpdate) {
+        guard update.mangaKey == viewModel.manga.key else { return }
+        let matchingNodes = collectionNode.visibleNodes.compactMap { node in
+            node as? ReaderWebtoonPageNode
+        }.filter { node in
+            node.page.chapterId == update.chapterKey && node.page.index == update.pageIndex
+        }
+        guard !matchingNodes.isEmpty else { return }
+        for node in matchingNodes {
+            Task { @MainActor in
+                _ = await node.reloadCurrentImage()
             }
         }
     }
@@ -666,7 +694,11 @@ extension ReaderWebtoonViewController: ASCollectionDataSource {
             // image page
             return { [weak self] in
                 guard let self else { return ASCellNode() }
-                let cell = ReaderWebtoonPageNode(source: self.viewModel.source, page: page)
+                let cell = ReaderWebtoonPageNode(
+                    source: self.viewModel.source,
+                    page: page,
+                    mangaKey: self.viewModel.manga.key
+                )
                 cell.delegate = self
                 return cell
             }
