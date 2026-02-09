@@ -269,7 +269,7 @@ public class ImageTranslator {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
     }
 
-    public static func generateCacheKey(chapterId: String, index: Int, targetLang: String, model: String) -> String {
+    public nonisolated static func generateCacheKey(chapterId: String, index: Int, targetLang: String, model: String) -> String {
         let keyString = "\(chapterId)-\(index)-\(targetLang)-\(model)"
         return keyString
             .replacingOccurrences(of: "/", with: "_")
