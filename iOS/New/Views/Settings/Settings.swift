@@ -509,6 +509,65 @@ extension Settings {
                     )
                 ]
             ))
+        ),
+        .init(
+            title: NSLocalizedString("Image Translation"),
+            value: .group(.init(items: [
+                .init(
+                    key: "ImageTranslation.enabled",
+                    title: NSLocalizedString("Enable Image Translation"),
+                    value: .toggle(.init(subtitle: NSLocalizedString("Requires downloaded chapters.")))
+                ),
+                .init(
+                    key: "ImageTranslation.apiKey",
+                    title: NSLocalizedString("API Key"),
+                    value: .text(.init(
+                        placeholder: "AIza...",
+                        autocapitalizationType: 0,
+                        keyboardType: 3,
+                        returnKeyType: 9,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "ImageTranslation.model",
+                    title: NSLocalizedString("Model"),
+                    value: .text(.init(
+                        placeholder: ImageTranslationSettings.defaultModel,
+                        autocapitalizationType: 0,
+                        keyboardType: 0,
+                        returnKeyType: 9,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "ImageTranslation.endpoint",
+                    title: NSLocalizedString("Endpoint"),
+                    value: .text(.init(
+                        placeholder: ImageTranslationSettings.defaultEndpoint,
+                        autocapitalizationType: 0,
+                        keyboardType: 3,
+                        returnKeyType: 9,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "ImageTranslation.language",
+                    title: NSLocalizedString("Target Language"),
+                    value: .text(.init(
+                        placeholder: ImageTranslationSettings.defaultLanguage,
+                        autocapitalizationType: 0,
+                        keyboardType: 0,
+                        returnKeyType: 9,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "ImageTranslation.clearCache",
+                    title: NSLocalizedString("Clear Image Translation Cache"),
+                    value: .button(.init())
+                )
+            ]))
         )
     ]
 

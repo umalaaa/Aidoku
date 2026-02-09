@@ -10,6 +10,8 @@ import AidokuRunner
 
 struct ChapterListHeaderView: View {
     private let chapterCount: Int?
+    private let allChapters: [AidokuRunner.Chapter]?
+    private let filteredChapters: [AidokuRunner.Chapter]?
 
     @Binding var sortOption: ChapterSortOption
     @Binding var sortAscending: Bool
@@ -24,6 +26,9 @@ struct ChapterListHeaderView: View {
     private var languages: [String] = []
     private var scanlators: [String] = []
     private var mangaUniqueKey: String
+    private let manga: AidokuRunner.Manga
+
+    @State private var translationEnabled: Bool = false
 
     init(
         allChapters: [AidokuRunner.Chapter]? = nil,
@@ -34,9 +39,12 @@ struct ChapterListHeaderView: View {
         langFilter: Binding<String?>,
         scanlatorFilter: Binding<[String]>,
         displayMode: Binding<ChapterTitleDisplayMode>,
-        mangaUniqueKey: String
+        mangaUniqueKey: String,
+        manga: AidokuRunner.Manga
     ) {
         self.chapterCount = filteredChapters?.count
+        self.allChapters = allChapters
+        self.filteredChapters = filteredChapters
         self._sortOption = sortOption
         self._sortAscending = sortAscending
         self._filters = filters
@@ -44,6 +52,10 @@ struct ChapterListHeaderView: View {
         self._scanlatorFilter = scanlatorFilter
         self._displayMode = displayMode
         self.mangaUniqueKey = mangaUniqueKey
+        self.manga = manga
+        self._translationEnabled = State(initialValue: UserDefaults.standard.bool(
+            forKey: ImageTranslationSettings.enabledKey
+        ))
 
         if let allChapters, !allChapters.isEmpty {
             var languages: Set<String> = []
@@ -94,6 +106,38 @@ struct ChapterListHeaderView: View {
 
     var menu: some View {
         Menu {
+            let translationConfigured = ImageTranslationSettings.current().isConfigured
+            let translationReady = translationEnabled && translationConfigured
+            Section(NSLocalizedString("Image Translation")) {
+                Button {
+                    translationEnabled.toggle()
+                    UserDefaults.standard.set(
+                        translationEnabled,
+                        forKey: ImageTranslationSettings.enabledKey
+                    )
+                } label: {
+                    Label {
+                        Text(NSLocalizedString("Use Translated Images"))
+                    } icon: {
+                        if translationEnabled {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                Button {
+                    let chapters = (allChapters ?? filteredChapters) ?? []
+                    guard !chapters.isEmpty else { return }
+                    Task {
+                        await TranslationManager.shared.translateDownloadedChapters(
+                            manga: manga,
+                            chapters: chapters
+                        )
+                    }
+                } label: {
+                    Label(NSLocalizedString("Translate Downloaded Chapters"), systemImage: "sparkles")
+                }
+                .disabled(!translationReady)
+            }
             Section(NSLocalizedString("SORT_BY")) {
                 ForEach(ChapterSortOption.allCases, id: \.self) { option in
                     Button {

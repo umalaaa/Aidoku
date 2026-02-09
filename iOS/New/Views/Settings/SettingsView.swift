@@ -222,6 +222,23 @@ extension SettingsView {
                         NotificationCenter.default.post(name: Notification.Name("updateHistory"), object: nil)
                     }
                 }
+            case "ImageTranslation.clearCache":
+                let cacheSize = ImageTranslationCacheInfo.formattedSize()
+                let message = cacheSize.isEmpty
+                    ? NSLocalizedString("This removes all cached translated images.")
+                    : String(
+                        format: NSLocalizedString("This removes all cached translated images. (%@)"),
+                        cacheSize
+                    )
+                confirmAction(
+                    title: NSLocalizedString("Clear Image Translation Cache"),
+                    message: message,
+                    destructive: true
+                ) {
+                    Task {
+                        await TranslationManager.shared.clearCache()
+                    }
+                }
             case "Advanced.migrateHistory":
                 confirmAction(
                     title: "Migrate Chapter History",
@@ -508,5 +525,29 @@ private extension Setting {
             default:
                 return checkCurrent()
         }
+    }
+}
+
+private struct ImageTranslationCacheInfo {
+    static func formattedSize() -> String {
+        let size = totalSize()
+        guard size > 0 else { return "" }
+        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+
+    private static func totalSize() -> Int64 {
+        let directory = ImageTranslationCache.directory
+        guard directory.exists else { return 0 }
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(at: directory, includingPropertiesForKeys: [.fileSizeKey]) else {
+            return 0
+        }
+        var total: Int64 = 0
+        for case let url as URL in enumerator {
+            if let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize {
+                total += Int64(size)
+            }
+        }
+        return total
     }
 }

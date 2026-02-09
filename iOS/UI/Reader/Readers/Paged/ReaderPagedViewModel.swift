@@ -54,20 +54,24 @@ class ReaderPagedViewModel {
         )
         let isDownloaded = DownloadManager.shared.isChapterDownloaded(chapter: identifier)
         if isDownloaded {
-            return await DownloadManager.shared.getDownloadedPages(for: identifier)
-                .map {
-                    $0.toOld(sourceId: sourceId, chapterId: chapter.key)
-                }
+            let pages = await DownloadManager.shared.getDownloadedPages(for: identifier)
+            return pages.enumerated().map { index, page in
+                var oldPage = page.toOld(sourceId: sourceId, chapterId: chapter.key)
+                oldPage.index = index
+                return oldPage
+            }
         } else {
-            return (try? await source?
+            let pages = (try? await source?
                 .getPageList(
                     manga: manga,
                     chapter: chapter
                 )
-            )?
-                .map {
-                    $0.toOld(sourceId: sourceId, chapterId: chapter.key)
-                } ?? []
+            ) ?? []
+            return pages.enumerated().map { index, page in
+                var oldPage = page.toOld(sourceId: sourceId, chapterId: chapter.key)
+                oldPage.index = index
+                return oldPage
+            }
         }
     }
 }

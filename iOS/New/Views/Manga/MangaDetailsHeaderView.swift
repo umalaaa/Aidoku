@@ -213,7 +213,8 @@ struct MangaDetailsHeaderView: View {
                     langFilter: $langFilter,
                     scanlatorFilter: $scanlatorFilter,
                     displayMode: $chapterTitleDisplayMode,
-                    mangaUniqueKey: manga.uniqueKey
+                    mangaUniqueKey: manga.uniqueKey,
+                    manga: manga
                 )
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
