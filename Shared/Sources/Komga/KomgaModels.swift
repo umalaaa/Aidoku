@@ -96,13 +96,25 @@ extension KomgaSearchCondition: Encodable {
                     try container.encode(ConditionValue(operator: exclude ? "isNot" : "is", value: genre), forKey: .genre)
                 }
             case .language(let id, let exclude):
-                try container.encode(ConditionValue(operator: (id.isEmpty ? !exclude : exclude) ? "isNot" : "is", value: id), forKey: .language)
+                try container.encode(
+                    ConditionValue(operator: (id.isEmpty ? !exclude : exclude) ? "isNot" : "is", value: id),
+                    forKey: .language
+                )
             case .libraryId(let id, let exclude):
-                try container.encode(ConditionValue(operator: (id.isEmpty ? !exclude : exclude) ? "isNot" : "is", value: id), forKey: .libraryId)
+                try container.encode(
+                    ConditionValue(operator: (id.isEmpty ? !exclude : exclude) ? "isNot" : "is", value: id),
+                    forKey: .libraryId
+                )
             case .publisher(let id, let exclude):
-                try container.encode(ConditionValue(operator: (id.isEmpty ? !exclude : exclude) ? "isNot" : "is", value: id), forKey: .publisher)
+                try container.encode(
+                    ConditionValue(operator: (id.isEmpty ? !exclude : exclude) ? "isNot" : "is", value: id),
+                    forKey: .publisher
+                )
             case .readStatus(let readStatus, let exclude):
-                try container.encode(ConditionValue(operator: exclude ? "isNot" : "is", value: readStatus.rawValue), forKey: .readStatus)
+                try container.encode(
+                    ConditionValue(operator: exclude ? "isNot" : "is", value: readStatus.rawValue),
+                    forKey: .readStatus
+                )
             case .releaseDate(let year, let exclude):
                 if let year {
                     struct ReleaseDate: Encodable {

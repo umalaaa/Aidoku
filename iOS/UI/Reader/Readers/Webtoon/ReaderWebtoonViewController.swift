@@ -39,6 +39,8 @@ class ReaderWebtoonViewController: ZoomableCollectionViewController {
     // Indicates if an info refresh should be done if info pages are off screen
     private var needsInfoRefresh = false
 
+    var autoTranslate: Bool = false
+
     // Stores the last calculated page number
     private var previousPage = 0
 
@@ -171,6 +173,10 @@ extension ReaderWebtoonViewController {
 
         isScrolling = true
 
+        if autoTranslate {
+            translateVisiblePages()
+        }
+
         // ignore if page slider is being used
         guard !isSliding && !isZooming else { return }
 
@@ -249,6 +255,15 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
         }
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil, actionProvider: { [weak self] _ in
             guard let self else { return nil }
+            let translateAction = UIAction(
+                title: NSLocalizedString("TRANSLATE"),
+                image: UIImage(systemName: "globe")
+            ) { _ in
+                Task { @MainActor in
+                    await self.translatePage(node: node)
+                }
+            }
+
             let saveToPhotosAction = UIAction(
                 title: NSLocalizedString("SAVE_TO_PHOTOS", comment: ""),
                 image: UIImage(systemName: "photo")
@@ -277,8 +292,67 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
                 }
             }
 
-            return UIMenu(title: "", children: [saveToPhotosAction, shareAction, reloadAction])
+            return UIMenu(title: "", children: [translateAction, saveToPhotosAction, shareAction, reloadAction])
         })
+    }
+
+    /// Translates the page image for the given webtoon page node
+    @MainActor
+    private func translatePage(node: ReaderWebtoonPageNode) async {
+        guard let image = node.image else { return }
+        if node.isTranslated || node.translating { return }
+
+        let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
+        if apiKey.isEmpty {
+            // Only show alert if explicitly triggered by user context menu, not auto-translate
+            // To distinguish, we might need a flag or just suppress alert for auto-translate
+            // For now, if autoTranslate is on, we might skip alert to avoid spam, or check earlier.
+            if !autoTranslate {
+                let alert = UIAlertController(title: NSLocalizedString("CONFIGURE_GEMINI"), message: NSLocalizedString("CONFIGURE_GEMINI_TEXT"), preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+                present(alert, animated: true)
+            }
+            return
+        }
+
+        let targetLang = UserDefaults.standard.string(forKey: "Reader.targetLanguage") ?? "Chinese (Simplified)"
+        let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
+        let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
+        let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
+
+        // Generate cache key
+        var cacheKey: String?
+        if let chapterId = node.page.chapterId as String? {
+            cacheKey = ImageTranslator.generateCacheKey(
+                chapterId: chapterId,
+                index: node.page.index,
+                targetLang: targetLang,
+                model: finalModel
+            )
+        }
+
+        node.setTranslating(true)
+        defer { node.setTranslating(false) }
+
+        do {
+            let translatedImage = try await ImageTranslator.shared.translate(
+                image: image,
+                apiKey: apiKey,
+                targetLang: targetLang,
+                model: finalModel,
+                apiEndpoint: apiEndpoint,
+                cacheKey: cacheKey
+            )
+            node.image = translatedImage
+            node.isTranslated = true
+            node.displayPage()
+        } catch {
+            if !autoTranslate {
+                let alert = UIAlertController(title: NSLocalizedString("TRANSLATION_FAILED"), message: NSLocalizedString("TRANSLATION_FAILED_TEXT"), preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+                present(alert, animated: true)
+            }
+        }
     }
 
     /// Reloads the page image for the given webtoon page node
@@ -577,6 +651,17 @@ extension ReaderWebtoonViewController: ReaderReaderDelegate {
     func sliderStopped(value: CGFloat) {
         isSliding = false
         scrollViewDidScroll(collectionNode.view)
+    }
+
+    func translateVisiblePages() {
+        // Find visible image pages and trigger translation
+        let visibleNodes = collectionNode.visibleNodes.compactMap { $0 as? ReaderWebtoonPageNode }
+
+        Task { @MainActor in
+            for pageNode in visibleNodes {
+                await self.translatePage(node: pageNode)
+            }
+        }
     }
 
     func setChapter(_ chapter: AidokuRunner.Chapter, startPage: Int) {

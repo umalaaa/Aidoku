@@ -28,6 +28,7 @@ struct MangaView: View {
     @State private var loadingAlert: UIAlertController?
 
     @State private var openChapter: AidokuRunner.Chapter?
+    @State private var autoTranslateOpenChapter = false
 
     private var path: NavigationCoordinator
 
@@ -206,10 +207,14 @@ struct MangaView: View {
                         }
                         return mangaWithFilteredChapters
                     }(),
-                    chapter: chapter
+                    chapter: chapter,
+                    autoTranslate: autoTranslateOpenChapter
                 )
                 .ignoresSafeArea()
                 .navigationTransitionZoom(sourceID: chapter, in: transitionNamespace)
+                .onDisappear {
+                    autoTranslateOpenChapter = false
+                }
             }
             .environment(\.editMode, $editMode)
         }
@@ -309,26 +314,45 @@ extension MangaView {
             downloadStatus: downloadStatus,
             downloadProgress: viewModel.downloadProgress[chapter.key],
             displayMode: viewModel.chapterTitleDisplayMode,
-            isEditing: editMode == .active
-        ) {
-            if editMode == .inactive {
-                openChapter = chapter
-            } else {
-                if selectedChapters.contains(chapter.key) {
-                    selectedChapters.remove(chapter.key)
+            translationStatus: viewModel.translationStatus[chapter.key] ?? .idle,
+            isEditing: editMode == .active,
+            onTranslate: {
+                let status = viewModel.translationStatus[chapter.key] ?? .idle
+                if status == .completed {
+                    autoTranslateOpenChapter = true
+                    openChapter = chapter
                 } else {
-                    selectedChapters.insert(chapter.key)
+                    switch status {
+                    case .idle, .failed:
+                        if let source = viewModel.source {
+                            TranslationManager.shared.translateChapter(chapter: chapter, manga: viewModel.manga, source: source)
+                        }
+                    default:
+                        break
+                    }
                 }
+            },
+            onPressed: {
+                if editMode == .inactive {
+                    openChapter = chapter
+                } else {
+                    if selectedChapters.contains(chapter.key) {
+                        selectedChapters.remove(chapter.key)
+                    } else {
+                        selectedChapters.insert(chapter.key)
+                    }
+                }
+            },
+            contextMenu: {
+                contextMenu(
+                    chapter: chapter,
+                    downloadStatus: downloadStatus,
+                    index: index,
+                    last: last,
+                    secondSection: secondSection
+                )
             }
-        } contextMenu: {
-            contextMenu(
-                chapter: chapter,
-                downloadStatus: downloadStatus,
-                index: index,
-                last: last,
-                secondSection: secondSection
-            )
-        }
+        )
         // use equatableview to determine when to refresh the view
         // improves the scrolling performance of the list
         .equatable()
@@ -730,7 +754,9 @@ private struct ChapterCellView<T: View>: View, Equatable {
     let downloadStatus: DownloadStatus
     let downloadProgress: Float?
     let displayMode: ChapterTitleDisplayMode
+    let translationStatus: TranslationStatus
     let isEditing: Bool
+    var onTranslate: (() -> Void)?
 
     var onPressed: (() -> Void)?
     var contextMenu: (() -> T)?
@@ -749,7 +775,9 @@ private struct ChapterCellView<T: View>: View, Equatable {
                 page: page,
                 downloadStatus: downloadStatus,
                 downloadProgress: downloadProgress,
-                displayMode: displayMode
+                displayMode: displayMode,
+                translationStatus: translationStatus,
+                onTranslate: isEditing ? nil : onTranslate
             )
         }
         if isEditing {
@@ -776,6 +804,7 @@ private struct ChapterCellView<T: View>: View, Equatable {
             && lhs.downloadStatus == rhs.downloadStatus
             && lhs.downloadProgress == rhs.downloadProgress
             && lhs.displayMode == rhs.displayMode
+            && lhs.translationStatus == rhs.translationStatus
             && lhs.isEditing == rhs.isEditing
     }
 }

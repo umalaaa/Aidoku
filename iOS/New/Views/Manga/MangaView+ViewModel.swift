@@ -21,6 +21,7 @@ extension MangaView {
         @Published var readingHistory: [String: (page: Int, date: Int)] = [:]
         @Published var downloadProgress: [String: Float] = [:] // chapterId: progress
         @Published var downloadStatus: [String: DownloadStatus] = [:] // chapterId: status
+        @Published var translationStatus: [String: TranslationStatus] = [:] // chapterId: status
 
         @Published var bookmarked = false
 
@@ -63,6 +64,22 @@ extension MangaView {
             self.chapterTitleDisplayMode = .init(rawValue: UserDefaults.standard.integer(forKey: key)) ?? .default
 
             setupNotifications()
+            setupTranslationManager()
+        }
+
+        private func setupTranslationManager() {
+            TranslationManager.shared.$status
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] status in
+                    guard let self = self else { return }
+                    // Update statuses for current chapters
+                    for chapter in self.chapters {
+                        if let s = status[chapter.key] {
+                            self.translationStatus[chapter.key] = s
+                        }
+                    }
+                }
+                .store(in: &cancellables)
         }
 
         private func setupNotifications() {
@@ -355,6 +372,14 @@ extension MangaView.ViewModel {
         }
         await fetchDownloadedChapters()
         await loadDownloadStatus()
+
+        // Initialize translation status
+        for chapter in chapters {
+            if TranslationManager.shared.isChapterTranslated(chapter.key) {
+                translationStatus[chapter.key] = .completed
+            }
+        }
+
         updateReadButton()
         initialDataLoaded = true
     }

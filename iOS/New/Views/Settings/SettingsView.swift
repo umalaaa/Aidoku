@@ -273,6 +273,53 @@ extension SettingsView {
                         await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
                     }
                 }
+            case "Reader.geminiTest":
+                let apiKey = UserDefaults.standard.string(forKey: "Reader.geminiApiKey") ?? ""
+                if apiKey.isEmpty {
+                    confirmAction(
+                        title: NSLocalizedString("CONFIGURE_GEMINI"),
+                        message: NSLocalizedString("CONFIGURE_GEMINI_TEXT"),
+                        continueActionName: NSLocalizedString("OK"),
+                        destructive: false
+                    ) {}
+                    return
+                }
+
+                (UIApplication.shared.delegate as? AppDelegate)?.showLoadingIndicator()
+                Task {
+                    let apiEndpoint = UserDefaults.standard.string(forKey: "Reader.geminiApiEndpoint")
+
+                    do {
+                        try await ImageTranslator.shared.validateConfiguration(apiKey: apiKey, apiEndpoint: apiEndpoint)
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
+                        confirmAction(
+                            title: NSLocalizedString("GEMINI_CONFIG_SUCCESS"),
+                            message: NSLocalizedString("GEMINI_CONFIG_SUCCESS_TEXT"),
+                            continueActionName: NSLocalizedString("OK"),
+                            destructive: false
+                        ) {}
+                    } catch {
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
+                        confirmAction(
+                            title: NSLocalizedString("GEMINI_CONFIG_FAILED"),
+                            message: String(format: NSLocalizedString("GEMINI_CONFIG_FAILED_TEXT"), error.localizedDescription),
+                            continueActionName: NSLocalizedString("OK"),
+                            destructive: false
+                        ) {}
+                    }
+                }
+            case "Reader.geminiSave":
+                confirmAction(
+                    title: NSLocalizedString("SETTINGS_SAVED"),
+                    message: NSLocalizedString("SETTINGS_SAVED_TEXT"),
+                    continueActionName: NSLocalizedString("OK"),
+                    destructive: false
+                ) {}
+            case "Reader.manageTranslations":
+                let controller = UIHostingController(rootView: TranslatedImagesView())
+                controller.title = NSLocalizedString("MANAGE_TRANSLATED_IMAGES")
+                controller.navigationItem.largeTitleDisplayMode = .never
+                path.push(controller)
             default:
                 break
         }
@@ -303,7 +350,43 @@ extension SettingsView {
 
     @ViewBuilder
     func customContentHandler(_ setting: Setting) -> some View {
-        if setting.key == "Library.defaultCategory" {
+        if setting.key == "Reader.geminiModel" {
+            let modelBinding: Binding<String> = SettingsStore.shared.binding(key: "Reader.geminiModel")
+            let models = [
+                "gemini-3-pro-image-preview",
+                "gemini-3-pro-preview",
+                "gemini-3-flash-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
+                "gemini-1.5-pro",
+                "gemini-1.5-flash"
+            ]
+
+            HStack {
+                Text(setting.title)
+                    .lineLimit(1)
+                Spacer()
+
+                TextField("gemini-1.5-pro", text: modelBinding)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled(true)
+                    .textInputAutocapitalization(.never)
+                    .foregroundColor(.secondary)
+
+                Menu {
+                    ForEach(models, id: \.self) { model in
+                        Button(model) {
+                            modelBinding.wrappedValue = model
+                        }
+                    }
+                } label: {
+                    Image(systemName: "chevron.up.chevron.down")
+                        .foregroundColor(.secondary)
+                }
+            }
+        } else if setting.key == "Library.defaultCategory" {
             let newSetting = {
                 var setting = setting
                 setting.value = .select(.init(
@@ -508,5 +591,78 @@ private extension Setting {
             default:
                 return checkCurrent()
         }
+    }
+}
+//
+//  TranslatedImagesView.swift
+//  Aidoku
+//
+//  Created by Jules on 10/26/24.
+//
+
+import SwiftUI
+
+struct TranslatedImagesView: View {
+    @State private var images: [URL] = []
+
+    var body: some View {
+        List {
+            ForEach(images, id: \.self) { url in
+                HStack {
+                    if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 50, height: 50)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    } else {
+                        Rectangle()
+                            .fill(Color.gray)
+                            .frame(width: 50, height: 50)
+                    }
+
+                    VStack(alignment: .leading) {
+                        Text(url.lastPathComponent)
+                            .lineLimit(1)
+                            .font(.body)
+                        if let attr = try? FileManager.default.attributesOfItem(atPath: url.path),
+                           let size = attr[.size] as? Int64 {
+                            Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+            .onDelete(perform: deleteImages)
+        }
+        .navigationTitle(NSLocalizedString("TRANSLATED_IMAGES"))
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(NSLocalizedString("CLEAR_ALL")) {
+                    clearAll()
+                }
+            }
+        }
+        .onAppear {
+            loadImages()
+        }
+    }
+
+    private func loadImages() {
+        images = ImageTranslator.shared.getCachedImages()
+    }
+
+    private func deleteImages(at offsets: IndexSet) {
+        offsets.forEach { index in
+            let url = images[index]
+            ImageTranslator.shared.deleteCachedImage(url: url)
+        }
+        images.remove(atOffsets: offsets)
+    }
+
+    private func clearAll() {
+        ImageTranslator.shared.clearCache()
+        images = []
     }
 }

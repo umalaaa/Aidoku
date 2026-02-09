@@ -23,6 +23,7 @@ class ReaderViewController: BaseObservingViewController {
     var pages: [Page] = []
     var readingMode: ReadingMode = .rtl
     var defaultReadingMode: ReadingMode?
+    var autoTranslate: Bool = false
     private var tapZone: TapZone?
 
     private var chapterList: [AidokuRunner.Chapter]
@@ -99,11 +100,13 @@ class ReaderViewController: BaseObservingViewController {
     init(
         source: AidokuRunner.Source?,
         manga: AidokuRunner.Manga,
-        chapter: AidokuRunner.Chapter
+        chapter: AidokuRunner.Chapter,
+        autoTranslate: Bool = false
     ) {
         self.source = source
         self.manga = manga
         self.chapter = chapter
+        self.autoTranslate = autoTranslate
         self.chapterList = manga.chapters ?? []
         self.chaptersToMark = [chapter]
         self.defaultReadingMode = switch manga.viewer {
@@ -134,13 +137,34 @@ class ReaderViewController: BaseObservingViewController {
                 action: #selector(openChapterList)
             )
         ]
-        let moreButton = UIBarButtonItem(
-            image: UIImage(systemName: "safari"),
-            style: .plain,
-            target: self,
-            action: #selector(openWebView)
-        )
-        moreButton.isEnabled = chapter.url != nil
+        let moreButton: UIBarButtonItem
+        if #available(iOS 14.0, *) {
+            moreButton = UIBarButtonItem(
+                image: UIImage(systemName: "ellipsis.circle"),
+                menu: UIMenu(children: [
+                    UIAction(
+                        title: NSLocalizedString("OPEN_WEBSITE"),
+                        image: UIImage(systemName: "safari"),
+                        attributes: chapter.url == nil ? .disabled : [],
+                        handler: { [weak self] _ in self?.openWebView() }
+                    ),
+                    UIAction(
+                        title: NSLocalizedString("TRANSLATE"),
+                        image: UIImage(systemName: "globe"),
+                        handler: { [weak self] _ in self?.reader?.translateVisiblePages() }
+                    )
+                ])
+            )
+        } else {
+            moreButton = UIBarButtonItem(
+                image: UIImage(systemName: "safari"),
+                style: .plain,
+                target: self,
+                action: #selector(openWebView)
+            )
+            moreButton.isEnabled = chapter.url != nil
+        }
+
         navigationItem.rightBarButtonItems = [
             moreButton,
             UIBarButtonItem(
@@ -561,10 +585,13 @@ extension ReaderViewController {
                 }
             case .scroll:
                 toolbarView.sliderView.direction = .forward
-                if !(reader is ReaderWebtoonViewController) {
-                    pageController = ReaderWebtoonViewController(source: source, manga: manga)
-                } else {
+                if let webtoonReader = reader as? ReaderWebtoonViewController {
+                    webtoonReader.autoTranslate = autoTranslate
                     pageController = nil
+                } else {
+                    let webtoonReader = ReaderWebtoonViewController(source: source, manga: manga)
+                    webtoonReader.autoTranslate = autoTranslate
+                    pageController = webtoonReader
                 }
             case .text:
                 toolbarView.sliderView.direction = .forward

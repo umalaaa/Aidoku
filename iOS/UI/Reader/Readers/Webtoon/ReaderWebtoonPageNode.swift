@@ -28,6 +28,8 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
     var text: String?
     var ratio: CGFloat?
     private var loading = false
+    private(set) var translating = false
+    var isTranslated = false
     private var shouldShowLiveTextButton = false
     private var liveTextAnalysisTask: Task<Void, Never>?
 
@@ -59,6 +61,13 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
         CircularProgressView()
     })
 
+    lazy var activityIndicatorNode = ASCellNode(viewBlock: {
+        let view = UIActivityIndicatorView(style: .large)
+        view.color = .white
+        view.startAnimating()
+        return view
+    })
+
     init(
         source: AidokuRunner.Source?,
         page: Page
@@ -80,6 +89,18 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
         addObserver(forName: "Reader.pillarboxOrientation") { [weak self] notification in
             self?.pillarboxOrientation = notification.object as? String ?? "both"
             self?.transition()
+        }
+
+        // Listen for translation completion
+        addObserver(forName: .init("ChapterTranslated")) { [weak self] notification in
+            guard let self = self, let delegate = self.delegate, delegate.autoTranslate else { return }
+
+            // Check if this notification is for our chapter
+            if let chapterId = notification.object as? String, chapterId == self.page.chapterId {
+                Task { @MainActor in
+                    await self.reloadCurrentImage()
+                }
+            }
         }
     }
 
@@ -169,6 +190,7 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
     }
 
     override func layoutSpecThatFits(_ constrainedSize: ASSizeRange) -> ASLayoutSpec {
+        let contentSpec: ASLayoutSpec
         if let image {
             if pillarbox && isPillarboxOrientation() {
                 let percent = (100 - pillarboxAmount) / 100
@@ -178,14 +200,14 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
                 imageNode.style.height = ASDimensionMakeWithPoints(height)
                 imageNode.style.alignSelf = .center
 
-                return ASCenterLayoutSpec(
+                contentSpec = ASCenterLayoutSpec(
                     horizontalPosition: .center,
                     verticalPosition: .center,
                     sizingOption: [],
                     child: imageNode
                 )
             } else {
-                return ASRatioLayoutSpec(ratio: image.size.height / image.size.width, child: imageNode)
+                contentSpec = ASRatioLayoutSpec(ratio: image.size.height / image.size.width, child: imageNode)
             }
         } else if text != nil {
             // todo: the text node should probably adjust its size based on the text
@@ -193,12 +215,12 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
                 let percent = (100 - pillarboxAmount) / 100
                 let ratio = percent * (ratio ?? Self.defaultRatio)
 
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio,
                     child: textNode
                 )
             } else {
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio ?? Self.defaultRatio,
                     child: textNode
                 )
@@ -208,17 +230,22 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
                 let percent = (100 - pillarboxAmount) / 100
                 let ratio = percent * (ratio ?? Self.defaultRatio)
 
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio,
                     child: progressNode
                 )
             } else {
-                return ASRatioLayoutSpec(
+                contentSpec = ASRatioLayoutSpec(
                     ratio: ratio ?? Self.defaultRatio,
                     child: progressNode
                 )
             }
         }
+
+        if translating {
+            return ASOverlayLayoutSpec(child: contentSpec, overlay: ASCenterLayoutSpec(centeringOptions: .XY, sizingOptions: [], child: activityIndicatorNode))
+        }
+        return contentSpec
     }
 }
 
@@ -231,6 +258,34 @@ extension ReaderWebtoonPageNode {
         textNode.alpha = 0
         progressNode.isHidden = false
         progressNode.isUserInteractionEnabled = false
+
+        // Try to load translated cache first if enabled or available
+        if let delegate = delegate, delegate.autoTranslate {
+            // Reconstruct cache key: "\(chapterId)-\(index)-\(targetLang)-\(model)"
+            let targetLang = UserDefaults.standard.string(forKey: "Reader.targetLanguage") ?? "Chinese (Simplified)"
+            let model = UserDefaults.standard.string(forKey: "Reader.geminiModel") ?? "gemini-1.5-pro"
+            let finalModel = model.isEmpty ? "gemini-1.5-pro" : model
+
+            let cacheKey = ImageTranslator.generateCacheKey(
+                chapterId: page.chapterId,
+                index: page.index,
+                targetLang: targetLang,
+                model: finalModel
+            )
+
+            let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("TranslationCache")
+            let fileURL = cacheDir.appendingPathComponent(cacheKey).appendingPathExtension("png")
+
+            if FileManager.default.fileExists(atPath: fileURL.path), let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
+                self.image = image
+                self.isTranslated = true
+                if isNodeLoaded {
+                    displayPage()
+                }
+                loading = false
+                return
+            }
+        }
 
         if let image = page.image {
             self.image = image
@@ -575,6 +630,11 @@ extension ReaderWebtoonPageNode {
             guard imageNode.imageAnalaysisInteraction?.selectableItemsHighlighted == false else { return }
             imageNode.imageAnalaysisInteraction?.isSupplementaryInterfaceHidden = hidden
         }
+    }
+
+    func setTranslating(_ translating: Bool) {
+        self.translating = translating
+        setNeedsLayout()
     }
 }
 

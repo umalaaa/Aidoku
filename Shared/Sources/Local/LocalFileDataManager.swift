@@ -52,7 +52,10 @@ extension LocalFileDataManager {
         } else {
             predicateString += " AND (chapter = nil OR chapter == -1)"
         }
-        request.predicate = NSPredicate(format: predicateString, argumentArray: args)
+        request.predicate = NSPredicate(
+            format: predicateString,
+            argumentArray: args
+        )
         request.fetchLimit = 1
         return (try? context.count(for: request)) == 1
     }

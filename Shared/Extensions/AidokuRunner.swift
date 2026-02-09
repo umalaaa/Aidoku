@@ -397,12 +397,13 @@ extension AidokuRunner.Chapter {
 }
 
 extension AidokuRunner.Page {
-    func toOld(sourceId: String, chapterId: String) -> Page {
+    func toOld(sourceId: String, chapterId: String, index: Int) -> Page {
         switch content {
             case let .url(url, context):
                 Page(
                     sourceId: sourceId,
                     chapterId: chapterId,
+                    index: index,
                     imageURL: url.absoluteString,
                     context: context,
                     hasDescription: hasDescription,
@@ -412,6 +413,7 @@ extension AidokuRunner.Page {
                 Page(
                     sourceId: sourceId,
                     chapterId: chapterId,
+                    index: index,
                     text: text,
                     hasDescription: hasDescription,
                     description: description
@@ -420,6 +422,7 @@ extension AidokuRunner.Page {
                 Page(
                     sourceId: sourceId,
                     chapterId: chapterId,
+                    index: index,
                     image: image.image,
                     hasDescription: hasDescription,
                     description: description
@@ -428,6 +431,7 @@ extension AidokuRunner.Page {
                 Page(
                     sourceId: sourceId,
                     chapterId: chapterId,
+                    index: index,
                     imageURL: filePath,
                     zipURL: url.absoluteString,
                     hasDescription: hasDescription,

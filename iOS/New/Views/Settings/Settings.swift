@@ -514,6 +514,58 @@ extension Settings {
 
     private static let advancedSettings: [Setting] = [
         .init(
+            title: NSLocalizedString("AI_TRANSLATE"),
+            value: .group(.init(items: [
+                .init(
+                    key: "Reader.geminiApiKey",
+                    title: NSLocalizedString("GEMINI_API_KEY"),
+                    value: .text(.init(
+                        placeholder: "API Key",
+                        autocapitalizationType: 0,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "Reader.geminiApiEndpoint",
+                    title: NSLocalizedString("GEMINI_API_ENDPOINT"),
+                    value: .text(.init(
+                        placeholder: "https://generativelanguage.googleapis.com",
+                        autocapitalizationType: 0,
+                        keyboardType: 3,
+                        autocorrectionDisabled: true
+                    ))
+                ),
+                .init(
+                    key: "Reader.geminiModel",
+                    title: NSLocalizedString("GEMINI_MODEL"),
+                    value: .custom
+                ),
+                .init(
+                    key: "Reader.targetLanguage",
+                    title: NSLocalizedString("TARGET_LANGUAGE"),
+                    value: .select(.init(
+                        values: ["Chinese (Simplified)", "English", "Japanese", "Korean", "Spanish", "French"],
+                        titles: ["Chinese (Simplified)", "English", "Japanese", "Korean", "Spanish", "French"]
+                    ))
+                ),
+                .init(
+                    key: "Reader.geminiTest",
+                    title: NSLocalizedString("TEST_GEMINI_CONFIG"),
+                    value: .button(.init())
+                ),
+                .init(
+                    key: "Reader.geminiSave",
+                    title: NSLocalizedString("SAVE_CONFIGURATION"),
+                    value: .button(.init())
+                ),
+                .init(
+                    key: "Reader.manageTranslations",
+                    title: NSLocalizedString("MANAGE_TRANSLATED_IMAGES"),
+                    value: .button(.init())
+                )
+            ]))
+        ),
+        .init(
             title: NSLocalizedString("LOGGING"),
             value: .group(.init(items: [
                 .init(
